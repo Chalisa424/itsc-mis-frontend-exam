@@ -1,10 +1,10 @@
 <template>
-  <nav class="bg-white shadow-md border-gray-200">
+  <nav class="bg-blue-500 text-white font-semibold shadow-md border-gray-200">
     <div class="flex flex-wrap justify-between mx-auto px-10 py-5">
       <span class="text-3xl">บทความ</span>
       <div class="flex space-x-6">
         <svg
-          class="w-6 h-6 text-gray-500 dark:text-white"
+          class="w-6 h-6 text-white"
           aria-hidden="true"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -21,7 +21,7 @@
         
         <a
           href="#"
-          class="text-2xl text-gray-500 hover:underline hover:text-blue-500"
+          class="text-2xl text-white hover:underline hover:text-blue-500"
           >Longout</a
         >
       </div>
