@@ -1,19 +1,12 @@
 <script setup lang="ts">
-import Navbar from './components/Navbar.vue';
-import SearchBar from './components/SearchBar.vue';
-
-
+import Navbar from "./components/Navbar.vue";
+import BlogList from "./view/BlogList.vue";
 </script>
 
 <template>
- 
- <div>
- <Navbar />
- <SearchBar />
-  </div>
- 
+  <Navbar />
+  <BlogList />
 </template>
 
 <style scoped>
-
 </style>
