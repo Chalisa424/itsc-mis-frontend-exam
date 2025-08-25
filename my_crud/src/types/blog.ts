@@ -3,7 +3,7 @@ export interface Blog {
   title: string;
   content: string;
   imageUrl?: string | null;
-  published: boolean;
+  published?: boolean;
   createAt: string;
 }
 

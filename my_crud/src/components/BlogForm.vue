@@ -131,15 +131,15 @@
             </button>
             <button
               type="submit"
-              :disabled="!formData.title || !formData.content"
+              :disabled="isSubmitting ||!formData.title || !formData.content"
               :class="[
                 'px-6 py-3 rounded-lg font-medium text-white',
-                !formData.title || !formData.content
+                (isSubmitting || !formData.title || !formData.content)
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700',
               ]"
             >
-              บันทึก
+             {{ isSubmitting? 'กำลังบันทึก...' : 'บันทึก'}}
             </button>
           </div>
         </form>
@@ -151,10 +151,13 @@
 <script setup lang="ts">
 import { ref, reactive } from "vue";
 import { useRouter } from "vue-router";
+import { useBlogStore } from "../stores/BlogStore";
 
 const router = useRouter();
+const blogStore = useBlogStore()
 const fileInput = ref<HTMLInputElement | null>(null);
 const dragActive = ref(false);
+const isSubmitting =ref(false)
 
 const formData = reactive({
   title: "",
@@ -236,15 +239,27 @@ const handleSubmit = async () => {
     alert("กรุณากรอกหัวข้อและเนื้อหา");
     return;
   }
+   
+  isSubmitting.value =true;
 
   try {
-    console.log("กำลังบันทึกบทความ:", formData);
-    // TODO: เชื่อมต่อ API
-    alert("บันทึกบทความเรียบร้อยแล้ว");
-    router.push("/blogs");
-  } catch (error) {
+    //ส่งข้อมูลไป store
+    const blogData ={
+      title: formData.title,
+      content: formData.content,
+      image: formData.image,
+      published: formData.published
+    };
+      //เรียก Action จาก ฆะนพำ
+    await blogStore.addBlog(blogData)
+
+    alert("บันทึกบทความเรียบร้อย");
+    router.push("/blogs"); 
+  } catch(error){
     console.error("เกิดข้อผิดพลาด:", error);
     alert("เกิดข้อผิดพลาดในการบันทึก");
+  }finally{
+    isSubmitting.value =false;
   }
 };
 </script>

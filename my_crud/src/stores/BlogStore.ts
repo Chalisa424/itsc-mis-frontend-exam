@@ -76,17 +76,60 @@ export const useBlogStore = defineStore("blog", () => {
     }
   };
 
-  const addBlog = async (blog: Omit<Blog, 'id' | 'createAt'>) => {
+  const addBlog = async (blogData: {
+    title:string;
+    content: string;
+    image: File | null;
+    published:boolean
+  }) =>{
+    loading.value = true
+    error.value = null
 
+    try{
+      //สร้าง URL สำหรับภาพ
+      let imageUrl: string | undefined =undefined
+      if (blogData.image){
+        imageUrl = URL.createObjectURL(blogData.image)
+      }
+      //เพิ่มบทความ
+      const newBlog: Blog = {
+        id: Math.max(...blogs.value.map(b => b.id), 0) +1,
+        title: blogData.title,
+        content: blogData.content,
+        imageUrl: imageUrl,
+        published: blogData.published,
+        createAt: new Date().toISOString()
+      }
+      ///เพิ่มบทความใหม่เข้า BlogList
+      blogs.value.unshift(newBlog)
+      loading.value =false
+
+      return newBlog
+    }catch(err){
+      error.value = 'Failed to create blog'
+      loading.value = false
+      throw err
+    }
   }
+
+ const deleteBlog = async (id: number) => {
+  loading.value = true
+    try{
+      blogs.value =blogs.value.filter(blog => blog.id !== id)
+      loading.value = false
+    }catch (err){
+      error.value = 'Failed to delete blog'
+      loading.value = false
+      throw err
+    }
+  }
+
 
   const updateBlog = async (id: number, blog: Partial<Blog>) =>{
 
   }
 
-  const deleteBlog = async (id: number) => {
-
-  }
+ 
 
   return{
     blogs,
