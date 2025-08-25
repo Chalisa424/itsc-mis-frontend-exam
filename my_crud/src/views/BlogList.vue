@@ -1,5 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-6">
+  <div>
+    <Navbar />  
+  <div class="bg-gray-50 p-6"> 
     <!-- Header -->
     <div class="max-w-9/10 mx-auto">
       <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -8,8 +10,9 @@
             <h1 class="text-3xl font-bold text-gray-900 mb-2">บทความ</h1>
           </div>
 
-          <!-- Add Button -->
-          <button
+          <!-- router link -->
+          <router-link
+            to="/blogs/create"
             class="bg-blue-600 hover:bg-blue-700 text-lg text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md flex items-center"
           >
             <svg
@@ -26,17 +29,17 @@
               />
             </svg>
             เพิ่มบทความ
-          </button>
+          </router-link>
         </div>
 
         <!-- Loading State -->
         <div class="flex items-cente">
           <div v-if="blogStore.loading">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 max-auto" >
-            </div>
+            <div
+              class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 max-auto"
+            ></div>
           </div>
         </div>
-
 
         <!-- Search and Filer -->
         <SearchBar />
@@ -68,10 +71,7 @@
         </div>
 
         <!-- Empty State -->
-        <div
-          v-if="blogStore.loading && blogStore.filteredBlogs.length === 0"
-          class="text-center py-12"
-        >
+        <div v-if="blogStore.loading" class="text-center py-12">
           <svg
             class="w-16 h-16 text-gray-400 mx-auto mb-4"
             fill="none"
@@ -90,6 +90,7 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -98,6 +99,7 @@ import { useRouter } from "vue-router";
 import { useBlogStore } from "../stores/BlogStore";
 import BlogCard from "../components/BlogCard.vue";
 import SearchBar from "../components/SearchBar.vue";
+import Navbar from "../components/Navbar.vue";
 
 const router = useRouter();
 const blogStore = useBlogStore();
