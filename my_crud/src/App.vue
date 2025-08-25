@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import Navbar from "./components/Navbar.vue";
-import BlogList from "./view/BlogList.vue";
+import BlogList from "./views/BlogList.vue";
+import BlogForm from "./components/BlogForm.vue";
+
 </script>
 
 <template>
-  <Navbar />
-  <BlogList />
+  <div>
+    <Navbar />
+    <BlogList />
+    <BlogForm />
+  </div>
 </template>
 
 <style scoped>

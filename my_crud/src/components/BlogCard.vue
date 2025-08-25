@@ -50,11 +50,11 @@
         </div>
       </div>
 
-      <!-- ปุ่ม Edit & Delete ไปอยู่ขวาสุดแยกบรรทัด -->
-      <div class="flex justify-end space-x-5 mt-3">
+      <!-- ปุ่ม Edit & Delete -->
+      <div class="flex justify-end space-x-3">
         <!-- Edit Button -->
         <button
-          @click="handleEdit"
+          @click="handleUpdate"
           class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
           title="แก้ไข"
         >
@@ -90,7 +90,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: "edit", id: number): void;
+  (e: "update", id: number): void;
   (e: "delete", id: number): void;
   (e: "toggle", id:number, published:boolean):void;
 }>();
@@ -112,12 +112,17 @@ const formatDate = (dateString: string) => {
   });
 };
 //  Function จัดการ edit
-const handleEdit = () => {
-  emit("edit", props.blog.id);
+const handleUpdate = () => {
+  emit("update", props.blog.id);
 };
 
 //  Function จัดการ delete
 const handleDelete = () => {
   emit("delete", props.blog.id);
 };
+
+const handleToggle = (e: Event) =>{
+  const checked = (e.target as HTMLInputElement).checked
+  emit('toggle', props.blog.id, checked)
+}
 </script>

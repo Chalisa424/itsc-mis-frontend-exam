@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import BlogList from '../view/BlogList.vue'
-import BlogCreate from '../view/BlogCreate.vue'
-import BlogDetail from '../view/BlogDetail.vue'
-import BlogUpdate from '../view/BlogUpdate.vue'
+import BlogList from '../views/BlogList.vue'
+import BlogCreate from '../views/BlogCreate.vue'
+import BlogDetail from '../views/BlogDetail.vue'
+import BlogUpdate from '../views/BlogUpdate.vue'
 
 const router = createRouter ({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,7 +23,7 @@ const router = createRouter ({
             component: BlogDetail
         },
         {
-            path:'blogs/:id/update',
+            path:'/blogs/:id/update',
             name:'BlogUpdate',
             component: BlogUpdate
         },

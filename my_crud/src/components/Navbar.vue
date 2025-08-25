@@ -22,7 +22,7 @@
         <a
           href="#"
           class="text-2xl text-white hover:underline hover:text-blue-500"
-          >Longout</a
+          >Logout</a
         >
       </div>
     </div>
