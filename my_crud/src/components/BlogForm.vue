@@ -10,9 +10,12 @@
             <label class="block text-xl font-semibold text-gray-900 mb-3"
               ><span class="text-red-600">*</span>หัวข้อ</label>
             <input
+              id="title"
+              name="title"
               type="text"
               v-model="formData.title"
               required
+              autocomplete="off"
               class="block w-full p-5 ps-20 border border-gray-300 rounded-2xl bg-gray-50"
             />
           </div>
@@ -22,9 +25,12 @@
               <span class="text-red-600">*</span> เนื้อหา
             </label>
             <textarea
+              id="content"
+              name="content"
               v-model="formData.content"
               required
               rows="8"
+              autocomplete="off"
               class="block w-full p-4 border border-gray-300 rounded-xl bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
               placeholder="ใส่เนื้อหาบทความ"
             ></textarea>
@@ -73,6 +79,7 @@
               <p class="text-lg text-gray-500">PNG, JPG, GIF up to 10MB</p>
 
               <input
+                id="image-upload"
                 ref="fileInput"
                 type="file"
                 accept="image/*"

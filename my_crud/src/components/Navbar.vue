@@ -1,7 +1,17 @@
 <template>
   <nav class="bg-blue-500 text-white font-semibold shadow-md border-gray-200">
     <div class="flex flex-wrap justify-between mx-auto px-10 py-5">
-      <span class="text-3xl">บทความ</span>
+      <div >
+      <!-- link กลับไป blog -->
+      <router-link
+      to="/blogs"
+      class="text-3xl">บทความ</router-link>
+      <span v-for="(crum , index) in breadcrumbs" :key="index"> / {{ crum }}</span>
+    
+      </div>
+      
+      <slot name="right"></slot>
+      
       <div class="flex space-x-6">
         <svg
           class="w-6 h-6 text-white"
@@ -29,5 +39,8 @@
   </nav>
 </template>
 <script setup lang="ts">
+defineProps<{
+  breadcrumbs?: string[]
+}>()
 </script>
 
