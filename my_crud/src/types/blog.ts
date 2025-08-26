@@ -4,7 +4,7 @@ export interface Blog {
   content: string;
   imageUrl?: string | null;
   published?: boolean;
-  createAt: string;
+  createdAt: string;
 }
 
 export interface BlogQuery {
