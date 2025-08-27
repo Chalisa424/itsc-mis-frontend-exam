@@ -7,7 +7,7 @@ import http from '../services/apiClient'
 
 function normalistImgUrl(url?:string | null): string| null{
   if (!url) return null
-  //แปลงเป็น "/uploads/blogs/xxx.webp"
+  //แปลงเป็น "/uploads/blogs/..."
   const path =url.replace(/\\/g, '/')
   // ทำเป็น absolute URL
   return `${API_BASE_URL}${path.startsWith('/') ? '': '/'}${path}`
@@ -48,7 +48,8 @@ export const useBlogStore = defineStore('blog', () => {
         b => b.title.toLowerCase().includes(q) || b.content.toLowerCase().includes(q)
       )
     }
-    if (showOnlyActive.value) list = list.filter(blog => blog.published)
+    if (showOnlyActive.value) 
+      list = list.filter((b) => b.published)
     return list
   })
 
@@ -62,14 +63,24 @@ export const useBlogStore = defineStore('blog', () => {
   })=> {
     loading.value = true
     error.value = null
+
+    let page = 1
+    let size = 10000
+    let q: string | undefined = undefined
+    let show: 'all' | 'active' = showOnlyActive.value ? 'active' : 'all'
+    if (param){
+      if(param.page !== undefined && param.page !== null)page = param.page 
+    
+      if(param.size !== undefined && param.size !== null)size = param.size
+    
+      if(param.q !== undefined && param.q !== null)q = param.q
+    
+      if(param.show !== undefined && param.show !== null) show = param.show 
+    }
+
     try{
       const res = await http.get<BlogListResponse>('/blogs',{
-        params:{
-          page: param?.page?? 1,
-          size: param?.size?? 10000,
-          q: param?.q ?? undefined,
-          show: param?.show ?? (showOnlyActive.value ? 'active' : 'all'),
-        },
+        params:{page, size, q, show },
       })
       console.log("API blog:",res.status, res.data)
       blogs.value = res.data.rows.map(toAppModel)
