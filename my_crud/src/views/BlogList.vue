@@ -33,12 +33,10 @@
         </div>
 
         <!-- Loading State -->
-        <div class="flex items-cente">
-          <div v-if="blogStore.loading">
+        <div class="flex items-center justify-center" v-if="blogStore.loading">
             <div
               class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 max-auto"
             ></div>
-          </div>
         </div>
 
         <!-- Search and Filer -->
@@ -49,8 +47,8 @@
             <label class="flex items-center cursor-pointer">
               <input
                 type="checkbox"
-                v-model="showPublishedOnly"
-                @change="handleFilterChange"
+                v-model="showAll"
+                @change="applyShowAll"
                 class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
               />
               <span class="ml-2 text-lg text-gray-700">แสดงบทความทั้งหมด</span>
@@ -71,7 +69,7 @@
         </div>
 
         <!-- Empty State -->
-        <div v-if="blogStore.loading" class="text-center py-12">
+        <div v-if="blogStore.loading && !pagedBlogs.length" class="text-center py-12">
           <svg
             class="w-16 h-16 text-gray-400 mx-auto mb-4"
             fill="none"
@@ -87,6 +85,26 @@
           </svg>
           <p class="text-gray-600 text-lg">ไม่พบบทความ</p>
         </div>
+        <!-- footer -->
+        <div class = "mt-6 flex items-center justify-between tex-lg text-gray-700">
+          <div>
+              แสดง {{ pagedBlogs.length }} รายการ จากทั้งหมด {{ totalItems }} รายการ
+          </div>
+          <div class="flex items-center gap-2">
+            <span>จำนวนต่อหน้า</span>
+            <select 
+            v-model="pageSize"
+            @change="page = 1"
+            class="border border-gray-300 rounded-lg px-3 py-2 bq-white"
+            >
+          <option :value="5">5</option>
+          <option :value="10">10</option>
+          <option :value="20">20</option>
+          <option :value="50">50</option>
+          </select>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -103,10 +121,31 @@ import Navbar from "../components/Navbar.vue";
 
 const router = useRouter();
 const blogStore = useBlogStore();
-const showPublishedOnly = ref(false);
 
-onMounted(() => {
-  blogStore.fetchBlogs();
+//filter แสดงบทความทั้งหมด
+const showAll = ref(true);
+
+const applyShowAll = () =>{
+  blogStore.showOnlyActive  = !showAll.value
+}
+
+watch (
+  () => blogStore.showOnlyActive ,
+  (v) => {showAll.value = !v; },
+  {immediate: true}
+)
+
+//Pagination
+const page = ref(1)
+const pageSize =ref (10)
+const totalItems = computed(() => (blogStore.filteredBlogs ?? []).length);
+
+
+const pagedBlogs = computed(() => {
+  const list = blogStore.filteredBlogs ?? [];
+  const start = (page.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return list.slice(start, end);
 });
 
 const handleUpdateBlog = (blogId: number) => {
@@ -119,18 +158,8 @@ const handleDeleteBlog = async (blogId: number) => {
   }
 };
 
-const handleToggleBlog = async (bolgId: number, published: boolean) => {
-  await blogStore.updateBlog(bolgId, { published });
+const handleToggleBlog = async (blogId: number, published: boolean) => {
+  await blogStore.updateBlog(blogId, { published });
 };
 
-const handleFilterChange = () => {
-  blogStore.showPublishedOnly = showPublishedOnly.value;
-};
-
-watch(
-  () => blogStore.showPublishedOnly,
-  (newValue) => {
-    showPublishedOnly.value = newValue;
-  }
-);
 </script>

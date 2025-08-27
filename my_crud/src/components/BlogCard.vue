@@ -3,7 +3,7 @@
     <!-- Image -->
     <div class="w-1/4 min-w-[120px] max-w-[200px]">
       <img
-        :src="blog.imageUrl || '/placeholder-image.jpg'"
+        :src="props.blog.imageUrl || '/placeholder-image.jpg'"
         class="w-full h-full object-cover"
       />
     </div>
@@ -12,7 +12,7 @@
       <div class="flex items-start justify-between mb-3">
               <!-- Title -->
       <h3 class="text-xl font-semibold text-gray-600 line-clamp-2 ml-4 flex-1 text-left">
-        {{ blog.title }}
+        {{props.blog.title }}
       </h3>
 
       <!-- สถานะ -->
@@ -20,15 +20,14 @@
       <label class="relative inline-flex items-center cursor-pointer">
         <input 
         type="checkbox"
-        :checked="blog.published"
-        @change="handleToggle"
+        :checked="localPublished"
         class="sr-only peer"
         >
         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500">
  
         </div>
         <span class="ml-2 text-sm font-medium text-gray-900">
-          {{ blog.published? 'เผยแพร่' : 'ซ่อน' }}
+          {{ localPublished? 'เผยแพร่' : 'ซ่อน' }}
         </span>
       </label>
   </div>
@@ -46,7 +45,7 @@
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>
-          {{ formatDate(blog.createAt) }}
+          {{ formatDate(props.blog.createdAt) }}
         </div>
       </div>
 
@@ -80,8 +79,9 @@
 
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, watch, ref  } from "vue";
 import type { Blog } from "../types/blog";
+import { walk } from "vue/compiler-sfc";
 
 interface Props {
   blog: Blog;
@@ -94,6 +94,13 @@ const emit = defineEmits<{
   (e: "delete", id: number): void;
   (e: "toggle", id:number, published:boolean):void;
 }>();
+
+const localPublished = ref<boolean>(props.blog.published ?? false)
+
+watch(
+  () => props.blog.published,
+  (v) => { localPublished.value = v ?? false }
+);
 
 // Computed property สำหรับตัดเนื้อหา
 const trunContent = computed(() => {
@@ -121,8 +128,9 @@ const handleDelete = () => {
   emit("delete", props.blog.id);
 };
 
-const handleToggle = (e: Event) =>{
-  const checked = (e.target as HTMLInputElement).checked
-  emit('toggle', props.blog.id, checked)
-}
+watch(localPublished, (v) =>{
+  emit('toggle',props.blog.id, v)
+})
+
+
 </script>

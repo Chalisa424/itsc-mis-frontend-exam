@@ -1,162 +1,246 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import apiClient, {API_BASE_URL} from '../services/apiClient'
 import type { Blog } from '../types/blog'
+import type {BlogApi, BlogListResponse} from '../types/api'
+import http from '../services/apiClient'
+
+function normalistImgUrl(url?:string | null): string| null{
+  if (!url) return null
+  //แปลงเป็น "/uploads/blogs/xxx.webp"
+  const path =url.replace(/\\/g, '/')
+  // ทำเป็น absolute URL
+  return `${API_BASE_URL}${path.startsWith('/') ? '': '/'}${path}`
+}
+
+//แปลง Blog จาก APIแบบที่ UI ใช้
+function toAppModel(b: BlogApi): Blog{
+  return {
+    id: b.id,
+    title: b.title,
+    content: b.content,
+    imageUrl: normalistImgUrl(b.Img?.url),
+    published: b.active,
+    createdAt: b.createdAt,
+    updatedAt: b.updatedAt,
+    hit: b.hit,
+    pin: b.pin
+  }
+}
 
 export const useBlogStore = defineStore('blog', () => {
   // ----- State
   const blogs = ref<Blog[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  // ฟิลเตอร์ฝั่ง UI
   const searchQuery = ref('')
-  const showPublishedOnly = ref(false)
+  const showOnlyActive = ref(false)
 
   // ----- Getters
   const filteredBlogs = computed(() => {
-    let filtered = blogs.value
+    let list = blogs.value
 
     // ค้นหาจาก title+content
     if (searchQuery.value) {
       const q = searchQuery.value.toLowerCase()
-      filtered = filtered.filter(
-        (blog) =>
-          blog.title.toLowerCase().includes(q) ||
-          blog.content.toLowerCase().includes(q)
+      list = list.filter(
+        b => b.title.toLowerCase().includes(q) || b.content.toLowerCase().includes(q)
       )
     }
-
-    // filter เฉพาะเผยแพร่
-    if (showPublishedOnly.value) {
-      filtered = filtered.filter((blog) => blog.published)
-    }
-
-    return filtered
+    if (showOnlyActive.value) list = list.filter(blog => blog.published)
+    return list
   })
 
-  // ----- Mock data (ใช้ createdAt ให้ตรงกัน)
-  const sampleData: Blog[] = [
-    {
-      id: 1,
-      title: 'การพัฒนาเว็บแอปด้วย Vue.js และ TypeScript',
-      content:
-        'Vue.js เป็น framework ที่น่าสนใจสำหรับการพัฒนาเว็บแอปพลิเคชันสมัยใหม่ ด้วยความเรียบง่ายและประสิทธิภาพที่สูง เมื่อรวมกับ TypeScript ทำให้การพัฒนามีความปลอดภัยมากขึ้น',
-      imageUrl:
-        'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400&h=300&fit=crop',
-      published: true,
-      createdAt: '2024-01-15T10:30:00Z',
-    },
-    {
-      id: 2,
-      title: 'เรียนรู้ Tailwind CSS ตั้งแต่เริ่มต้น',
-      content:
-        'Tailwind CSS เป็น utility-first CSS framework ที่ช่วยให้การออกแบบเว็บเร็วและสวยงามยิ่งขึ้น ในบทความนี้จะสอนวิธีการใช้งานพื้นฐาน',
-      imageUrl:
-        'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=300&fit=crop',
-      published: false,
-      createdAt: '2024-01-14T14:20:00Z',
-    },
-    {
-      id: 3,
-      title: 'การตั้งค่า Vite + Vue 3 + TypeScript',
-      content:
-        'คู่มือการตั้งค่าโปรเจค Vue.js กับ Vite และ TypeScript อย่างละเอียด พร้อมตัวอย่างการใช้งาน',
-      imageUrl:
-        'https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=400&h=300&fit=crop',
-      published: true,
-      createdAt: '2024-01-13T09:15:00Z',
-    },
-  ]
 
-
-  // force = true จะบังคับโหลดใหม่
-  const fetchBlogs = async (force = false) => {
-    if (blogs.value.length && !force) return
+  // Get /blogs รองรับ page/size/q/show
+  const fetchBlogs = async (param?: {
+    page?: number
+    size?: number
+    q?: string
+    show?: 'all' | 'active'
+  })=> {
     loading.value = true
     error.value = null
-    try {
-      await new Promise((r) => setTimeout(r, 800)) 
+    try{
+      const res = await http.get<BlogListResponse>('/blogs',{
+        params:{
+          page: param?.page?? 1,
+          size: param?.size?? 10000,
+          q: param?.q ?? undefined,
+          show: param?.show ?? (showOnlyActive.value ? 'active' : 'all'),
+        },
+      })
+      console.log("API blog:",res.status, res.data)
+      blogs.value = res.data.rows.map(toAppModel)
+      console.log('[STORE] blogs after map ->', blogs.value.length)
+      return res.data
+    }catch (e:any){
+       console.log("blog after map", e?.response?.status, e?.response?.data || e)
+      error.value = e?.response?.data?.error || 'Failed to fetch blogs'
+      throw e
+    }finally{
+      loading.value =false
+    }
+  }
+  
+  // Get /blogs/:id
+  const fetchBlogById = async(id:number): Promise<Blog> => {
+    loading.value = true
+    error.value = null
+    try{
+      const res = await http.get<BlogApi>(`/blogs/${id}`)
+      const blog = toAppModel(res.data)
 
-      // รวม sampleData + blogs ด้วย id
-      const seen = new Set<number>()
-      const merged: Blog[] = []
-      for (const b of [...blogs.value, ...sampleData]) {
-        if (!seen.has(b.id)) {
-          seen.add(b.id)
-          merged.push(b)
-        }
-      }
-      blogs.value = merged.sort((a, b) => b.id - a.id)
-    } catch (e) {
-      error.value = 'Failed to fetch blogs'
-    } finally {
+      const i = blogs.value.findIndex(b => b.id === id)
+      if (i === -1) blogs.value.unshift(blog)
+        else blogs.value[i] = blog
+      return blog
+    }catch(e: any){
+      error.value = e?.response?.data?.error || 'Failed to fetch blogs'
+      throw e
+    }finally{
       loading.value = false
     }
   }
 
-  const addBlog = async (blogData: {
+   // Post /blogs  
+  const addBlog = async (payload: {
     title: string
     content: string
-    image: File | null
+    image?: File | null
     published: boolean
-  }) => {
+  }): Promise<Blog> => {
+    loading.value = true
+    error.value = null
+    try{
+      let res
+      if (payload.image){
+        const fd = new FormData()
+        fd.append('title',payload.title)
+        fd.append('content', payload.content)
+        fd.append('blog_img', payload.image)
+        res = await http.post<BlogApi>('/blogs', fd)
+      }else{
+        res = await http.post<BlogApi>('blogs', {
+          title: payload.title,
+         content: payload.content,
+        })
+      }
+      const blog = toAppModel(res.data)
+      blogs.value.unshift(blog)
+      return blog
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || 'Failed to create blog'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+
+  //Put /Blogs/:id
+  const updateBlog = async (id: number, payload: {
+    title?: string
+    content?: string
+    image?: File | null
+    published?: boolean
+  }): Promise<Blog> => {
     loading.value = true
     error.value = null
     try {
-      let imageUrl: string | undefined
-      if (blogData.image) imageUrl = URL.createObjectURL(blogData.image)
-
-      const nextId =
-        blogs.value.length > 0
-          ? Math.max(...blogs.value.map((b) => b.id)) + 1
-          : 1
-
-      const newBlog: Blog = {
-        id: nextId,
-        title: blogData.title,
-        content: blogData.content,
-        imageUrl,
-        published: blogData.published,
-        createdAt: new Date().toISOString(),
+      let res
+      if (payload.image) {
+        const fd = new FormData()
+        if (payload.title != null) fd.append('title', payload.title)
+        if (payload.content != null) fd.append('content', payload.content)
+        fd.append('blog_img', payload.image)
+        res = await http.put<BlogApi>(`/blogs/${id}`, fd)
+      } else {
+        const body: Record<string, any> = {}
+        if (payload.title != null) body.title = payload.title
+        if (payload.content != null) body.content = payload.content
+        res = await http.put<BlogApi>(`/blogs/${id}`, body)
       }
-
-      blogs.value.unshift(newBlog)
-      return newBlog
-    } catch (err) {
-      error.value = 'Failed to create blog'
-      throw err
+      const blog = toAppModel(res.data)
+      const i = blogs.value.findIndex(b => b.id === id)
+      if (i !== -1) blogs.value[i] = blog
+      else blogs.value.unshift(blog)
+      return blog
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || 'Failed to update blog'
+      throw e
     } finally {
       loading.value = false
     }
   }
-
-  const updateBlog = async (id: number, patch: Partial<Blog>) => {
-    const i = blogs.value.findIndex((b) => b.id === id)
-    if (i !== -1) {
-      blogs.value[i] = { ...blogs.value[i], ...patch }
-    }
-  }
-
+  
+  // Delete  /blogs/:id
   const deleteBlog = async (id: number) => {
     loading.value = true
+    error.value
     try {
+      await http.delete(`/blogs/${id}`)
       blogs.value = blogs.value.filter((b) => b.id !== id)
-    } catch (err) {
-      error.value = 'Failed to delete blog'
-      throw err
+    } catch (e: any) {
+      error.value = e?.response?.data?.error ||'Failed to delete blog'
+      throw e
     } finally {
       loading.value = false
     }
   }
 
+ // Put /blogs/:id/remove-image
+  const removeImage = async (id: number) => {
+    loading.value = true
+    error.value = null
+    try {
+      await http.put(`/blogs/${id}/remove-image`)
+      const i = blogs.value.findIndex(b => b.id === id)
+      if (i !== -1) blogs.value[i] = { ...blogs.value[i], imageUrl: null }
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || 'Failed to remove image'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+    // POST /blogs/delete  { ids: number[] }
+  const deleteMany = async (ids: number[]) => {
+    loading.value = true
+    error.value = null
+    try {
+      await http.post('/blogs/delete', { ids })
+      const set = new Set(ids)
+      blogs.value = blogs.value.filter(b => !set.has(b.id))
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || 'Failed to delete blogs'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+
   return {
+    //state
     blogs,
-    filteredBlogs,
     loading,
     error,
     searchQuery,
-    showPublishedOnly,
+    showOnlyActive,
+
+    //getter
+    filteredBlogs,
+
+    //action
     fetchBlogs,
+    fetchBlogById,
     addBlog,
     updateBlog,
     deleteBlog,
+    removeImage,
+    deleteMany
   }
 })

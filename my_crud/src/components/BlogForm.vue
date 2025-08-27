@@ -257,7 +257,7 @@ const handleSubmit = async () => {
       image: formData.image,
       published: formData.published
     };
-      //เรียก Action จาก ฆะนพำ
+      
     await blogStore.addBlog(blogData)
 
     alert("บันทึกบทความเรียบร้อย");
