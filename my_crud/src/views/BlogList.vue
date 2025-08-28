@@ -48,7 +48,6 @@
               <input
                 type="checkbox"
                 v-model="showAll"
-                @change="applyShowAll"
                 class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
               />
               <span class="ml-2 text-lg text-gray-700">แสดงบทความทั้งหมด</span>
@@ -129,16 +128,16 @@ const applyShowAll = () =>{
   blogStore.showOnlyActive  = !showAll.value
 }
 
-watch (
-  () => blogStore.showOnlyActive ,
-  (v) => {showAll.value = !v; },
-  {immediate: true}
-)
+//checkbox เปลี่ยน
+
+watch(showAll, (val) => {
+      blogStore.showOnlyActive = !val
+})
 
 onMounted(async ()=>{
-  console.log('[BlogList] mounted')
-  const res = await blogStore.fetchBlogs()
-  console.log('[BlogList] fetched', res)
+  blogStore.showOnlyActive =!showAll.value
+  await blogStore.fetchBlogs()
+  
 })
 
 //Pagination
@@ -165,7 +164,14 @@ const handleDeleteBlog = async (blogId: number) => {
 };
 
 const handleToggleBlog = async (blogId: number, published: boolean) => {
-  await blogStore.updateBlog(blogId, { published });
-};
+
+  try{
+    await blogStore.updateBlog(blogId, {published})
+  }catch (e) {
+    console.error('toggle failed',e)
+    }
+  }
+
+
 
 </script>

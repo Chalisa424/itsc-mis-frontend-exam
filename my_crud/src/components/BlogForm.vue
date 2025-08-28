@@ -156,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, onBeforeMount } from "vue";
 import { useRouter } from "vue-router";
 import { useBlogStore } from "../stores/BlogStore";
 
@@ -207,6 +207,13 @@ const handleDrop = (event: DragEvent) => {
   }
 };
 
+//ลบlink preview เมื่อ component5^dme]kp
+onBeforeMount(() => {
+  if(imagePreview.value && imagePreview.value.startsWith('blob:')){
+    URL.revokeObjectURL(imagePreview.value)
+  }
+})
+
 // Process image and create preview
 const processImage = (file: File) => {
   // ตรวจสอบขนาดไฟล์ (max 10MB)
@@ -223,16 +230,17 @@ const processImage = (file: File) => {
 
   formData.image = file;
 
-  // สร้าง preview
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    imagePreview.value = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+  // สร้าง preview ด้วย Blob URL
+  imagePreview.value = URL.createObjectURL(file);
 };
 
 // ลบรูปภาพ
 const removeImage = () => {
+//ลบlink blob 
+  if(imagePreview.value && imagePreview.value.startsWith('blob:')){
+    URL.revokeObjectURL(imagePreview.value)
+  }
+  
   formData.image = null;
   imagePreview.value = null;
   if (fileInput.value) {
@@ -258,15 +266,17 @@ const handleSubmit = async () => {
       published: formData.published
     };
       
-    await blogStore.addBlog(blogData)
+    const result = await blogStore.addBlog(blogData)
+    console.log('Blog crated', result)
 
     alert("บันทึกบทความเรียบร้อย");
     router.push("/blogs"); 
-  } catch(error){
+  } catch (error: any) {
     console.error("เกิดข้อผิดพลาด:", error);
-    alert("เกิดข้อผิดพลาดในการบันทึก");
-  }finally{
-    isSubmitting.value =false;
+    const errorMessage = error.response?.data?.error || "เกิดข้อผิดพลาดในการบันทึก";
+    alert(`เกิดข้อผิดพลาด: ${errorMessage}`);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 </script>
