@@ -3,7 +3,7 @@
     <Navbar />  
   <div class="bg-gray-50 p-6"> 
     <!-- Header -->
-    <div class="max-w-9/10 mx-auto">
+    <div class="max-w-3/4 mx-auto">
       <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div class="flex items-center justify-between mb-8">
           <div>

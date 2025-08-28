@@ -9,7 +9,7 @@
           <div class="mb-6 py-8">
             <label class="block text-xl font-semibold text-gray-900 mb-3"
               ><span class="text-red-600">*</span>หัวข้อ</label>
-            <input
+            <inputmax
               id="title"
               name="title"
               type="text"
