@@ -187,8 +187,7 @@ const blog = computed<Blog | undefined>(() =>
   store.blogs.find((b) => b.id === id)
 );
 
-
-// form state
+// form state ใช้โครงสร้างคล้ายกับ ฺBlog ที่ไม่ได้มีทุก field
 const form = reactive({
   title: "",
   content: "",
@@ -196,37 +195,50 @@ const form = reactive({
 const newImageFile = ref<File | null>(null);
 const imagePreview = ref<string | null>(null);
 
+interface FromError{
+  title?: string;
+  content?: string;
+  image?: string;
+}
+
+const errors = reactive<FromError>({});
+
 const crumbs = computed(() => [
   blog.value?.title || "รายละเอียดบทความ",
   "แก้ไขบทความ",
 ]);
 
-onMounted(async () => {
-  try {
-    if (!blog.value) await store.fetchBlogById(id);
-    if (blog.value) {
-      form.title = blog.value.title;
-      form.content = blog.value.content;
-      // ถ้ามีรูปจากเซิร์ฟเวอร์ และอยากโชว์เป็น preview เริ่มต้น
-    }
-  } finally {
-    loading.value = false;
-  }
-});
-
-onBeforeUnmount(() => {
-  if (imagePreview.value?.startsWith("blob:"))
-    URL.revokeObjectURL(imagePreview.value);
-});
-
 // --- validation ---
-const errors = reactive<{ title?: string; content?: string; image?: string }>(
-  {}
-);
+const isValid = computed(() =>{
+  return !errors.title && !errors.content
+})
 
-const isValid = computed(() => !errors.title && !errors.content);
+function validateForm(): boolean {
+  let valid = true;
+  
+  if (!form.title.trim()) {
+    errors.title = "กรุณากรอกหัวข้อบทความ";
+    valid = false;
+  } else {
+    errors.title = "";
+  }
+  
+  if (!form.content.trim()) {
+    errors.content = "กรุณากรอกเนื้อหาบทความ";
+    valid = false;
+  } else {
+    errors.content = "";
+  }
+  
+  return valid;
+}
 
-// --- image handlers ---
+//Navigation
+function goBack():void{
+  router.push("/blogs");
+}
+
+// Image handlers
 function onPick() {
   fileInput.value && fileInput.value.click();
 }
@@ -255,7 +267,7 @@ function processImage(file: File) {
   imagePreview.value = URL.createObjectURL(file);
 }
 
-function removeImage() {
+function removeImage():void {
   if (imagePreview.value?.startsWith("blob:"))
     URL.revokeObjectURL(imagePreview.value);
   imagePreview.value = null;
@@ -263,22 +275,18 @@ function removeImage() {
   if (fileInput.value) fileInput.value.value = "";
 }
 
-async function handleSubmit() {
-  if (!blog.value || !isValid.value) return;
+// Form submission ใช้ parameter format ตามที่ store กำหนด
+async function handleSubmit(): Promise<void> {
+  if (!validateForm() ||!blog.value) return;
   submitting.value = true;
   try {
-    const fd = new FormData();
-
-    if (form.title !== blog.value.title) fd.append("title", form.title);
-    if (form.content !== blog.value.content) fd.append("content", form.content);
-    if (newImageFile.value) fd.append("blog_img", newImageFile.value);
-
-    if (![...fd.keys()].length) {
-      router.push("/blogs");
-      return;
-    }
-
-    await store.updateBlog(blog.value.id, fd);   // ส่ง FormData
+  // ส่ง parameter ตามที่ store updateBlog ต้องการ
+    await store.updateBlog(blog.value.id, {
+      title: form.title,
+      content: form.content,
+      image: newImageFile.value,
+      published: blog.value.published
+    });
     router.push("/blogs");
   } catch (e: any) {
     console.error("Update failed", e);
@@ -286,4 +294,23 @@ async function handleSubmit() {
     submitting.value = false;
   }
 }
+
+onMounted(async () => {
+  try {
+    if (!blog.value) await store.fetchBlogById(id);
+    if (blog.value) {
+      form.title = blog.value.title;
+      form.content = blog.value.content;
+      // ถ้ามีรูปจากเซิร์ฟเวอร์โชว์เป็น preview เริ่มต้น
+    }
+  } finally {
+    loading.value = false;
+  }
+});
+
+onBeforeUnmount(() => {
+  if (imagePreview.value?.startsWith("blob:"))
+    URL.revokeObjectURL(imagePreview.value);
+});
+
 </script>

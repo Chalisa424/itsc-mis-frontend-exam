@@ -137,17 +137,11 @@
               ยกเลิก
             </button>
             <button
-              type="submit"
-              :disabled="isSubmitting ||!formData.title || !formData.content"
-              :class="[
-                'px-6 py-3 rounded-lg font-medium text-white',
-                (isSubmitting || !formData.title || !formData.content)
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700',
-              ]"
-            >
-             {{ isSubmitting? 'กำลังบันทึก...' : 'บันทึก'}}
-            </button>
+                type="submit"
+                 class="px-5 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+              >
+               บันทึก
+              </button>
           </div>
         </form>
       </div>
@@ -269,7 +263,6 @@ const handleSubmit = async () => {
     const result = await blogStore.addBlog(blogData)
     console.log('Blog crated', result)
 
-    alert("บันทึกบทความเรียบร้อย");
     router.push("/blogs"); 
   } catch (error: any) {
     console.error("เกิดข้อผิดพลาด:", error);
