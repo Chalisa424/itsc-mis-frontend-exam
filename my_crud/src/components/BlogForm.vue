@@ -9,7 +9,7 @@
           <div class="mb-6 py-8">
             <label class="block text-xl font-semibold text-gray-900 mb-3"
               ><span class="text-red-600">*</span>หัวข้อ</label>
-            <inputmax
+            <input
               id="title"
               name="title"
               type="text"
@@ -74,9 +74,9 @@
 
               <p class="text-gray-600 text-lg mb-2">
                 <span class="text-blue-600 font-medium">คลิกเพื่ออัปโหลด</span>
-                หรือลากและวางไฟล์ที่นี่
+                หรือลากและวางไฟล์ที่นี่ PNG, JPG, GIF up to 10MB
               </p>
-              <p class="text-lg text-gray-500">PNG, JPG, GIF up to 10MB</p>
+              
 
               <input
                 id="image-upload"
