@@ -1,4 +1,5 @@
 <template>
+    <!-- ครอบทุกอย่างไว้ใน label ทำให้ คลิกพื้นที่ไหนก็สั่ง toggle ได้ -->
   <label
     :class="[
       'inline-flex items-center select-none',
@@ -13,9 +14,10 @@
       role="switch"
       :aria-checked="modelValue"
       :aria-label="ariaLabel || label"
-      @change="onChange"
+      @change="onChange"  
     />
-
+    <!-- @change="onChange" → เมื่อ กด Space แล้ว checkbox เปลี่ยนค่า เรียกฟังก์ชันเพื่อ emit ค่าใหม่ -->
+    <!-- “ราง” ของสวิตช์ และเราใช้ pseudo-element after: ให้เป็น “ปุ่มกลม” (thumb) -->
      <div
           class="relative w-11 h-6 bg-gray-200 rounded-full transition-colors
                  peer-checked:bg-blue-600
@@ -36,7 +38,7 @@
 
 
 const props = defineProps<{
-  modelValue: boolean
+  modelValue: boolean //ค่าเปิด/ปิด ที่จะผูก v-model
   label?: string
   ariaLabel?: string
   disabled?: boolean

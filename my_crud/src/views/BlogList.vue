@@ -102,7 +102,7 @@ const blogStore = useBlogStore();
 
 // Local UI state
 const searchQuery = ref("");
-const showAll = ref<boolean>(true);
+const showAll = ref<boolean>(true); //// กรองให้ถูกทิศ: เปิด (true) = แสดงทั้งหมด, ปิด (false) = เฉพาะเผยแพร่
 
 // การโหลดข้อมูล
 onMounted(async () => {
