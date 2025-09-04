@@ -6,30 +6,34 @@
       <div class="max-w-3/4 mx-auto">
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div class="flex items-center justify-between mb-8">
-            <div>
-              <h1 class="text-3xl font-bold text-gray-900 mb-2">บทความ</h1>
+            <!-- กลุ่มซ้าย -->
+            <div class="flex items-center gap-4">
+              <h1 class="text-3xl font-bold text-gray-900 mb-2 p-5">บทความ</h1>
+
+              <router-link
+                to="/blogs/create"
+                class="bg-blue-600 hover:bg-blue-700 text-lg text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md flex items-center"
+              >
+                <svg
+                  class="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                เพิ่มบทความ
+              </router-link>
             </div>
 
-            <!-- router link -->
-            <router-link
-              to="/blogs/create"
-              class="bg-blue-600 hover:bg-blue-700 text-lg text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md flex items-center"
-            >
-              <svg
-                class="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              เพิ่มบทความ
-            </router-link>
+            <!-- กลุ่มขวา Toggle แสดงทั้งหมด -->
+            <ToggleSwitch v-model="showAll" size="md"> แสดงทั้งหมด </ToggleSwitch>
+
           </div>
 
           <!-- Loading State -->
@@ -43,22 +47,9 @@
           </div>
 
           <!-- Search and Filer -->
-          <SearchBar />
-          <div class="p-6 mb-6">
-            <!-- Filter Checkbox -->
-            <div class="flex items-center">
-              <label class="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  v-model="showAll"
-                  class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span class="ml-2 text-lg text-gray-700"
-                  >แสดงบทความทั้งหมด</span
-                >
-              </label>
-            </div>
-          </div>
+          <SearchBar 
+          class="py-6"
+          />
 
           <!-- Blog List -->
           <div class="space-y-4">
@@ -104,6 +95,7 @@ import { useBlogStore } from "../stores/BlogStore";
 import BlogCard from "../components/BlogCard.vue";
 import SearchBar from "../components/SearchBar.vue";
 import Navbar from "../components/Navbar.vue";
+import ToggleSwitch from "../components/ToggleSwitch.vue";
 
 const router = useRouter();
 const blogStore = useBlogStore();
@@ -117,24 +109,26 @@ onMounted(async () => {
   // ถ้าต้องการให้ server กรองเลย ให้ส่ง q/show เข้าไป
   // await blogStore.fetchBlogs({ q: searchQuery.value || undefined, show: showAll.value ? "all" : "active" });
   await blogStore.fetchBlogs();
-})
+});
 
-  // ----- Search Getters กรองผลลัพธ์ฝั่ง Client
-  const filteredBlogs = computed(() => {
-    const q = searchQuery.value.toLowerCase();
-    let list = blogStore.blogs
-    // ค้นหาจาก title+content
-    if (q) {
-      list = list.filter(
-        (b) =>
-          b.title.toLowerCase().includes(q) ||
-          b.content.toLowerCase().includes(q)
-      );
-    }
-    //ถ้า showAll เป็น false → กรองให้เหลือเฉพาะบทความที่ published
-    if (showAll.value) list = list.filter((b) => b.published);
-    return list;
-  });
+// ----- Search
+const filteredBlogs = computed(() => {
+  let list = blogStore.blogs ?? []
+  const q = searchQuery.value.trim().toLowerCase();
+  // ค้นหาจาก title+content
+  if (q) {
+    list = list.filter(
+      b =>
+        b.title.toLowerCase().includes(q) ||
+        b.content.toLowerCase().includes(q)
+    );
+  }
+  //Toggle แสดงบทความทั้งหมด เปิดสวิตช์ = แสดงทั้งหมด (ไม่กรอง) | ปิดสวิตช์ = เฉพาะเผยแพร่ (ค่อยกรอง)
+  if (!showAll.value){
+    list = list.filter((b) => b.published);
+  }
+  return list;
+});
 
 // ----------------Pagination------------------- (local)
 const page = ref<number>(1);
@@ -142,8 +136,7 @@ const pageSize = ref<number>(10);
 
 watch([filteredBlogs, pageSize], () => {
   page.value = 1;
-});//// พอผลลัพธ์เปลี่ยนหรือ pageSize เปลี่ยน ให้รีเซ็ตไปหน้าแรก
-
+}); //// พอผลลัพธ์เปลี่ยนหรือ pageSize เปลี่ยน ให้รีเซ็ตไปหน้าแรก
 
 const pagedBlogs = computed(() => {
   const start = (page.value - 1) * pageSize.value;
