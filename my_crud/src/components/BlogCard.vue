@@ -160,13 +160,13 @@
       </div>
     </div>
   </div>
+
 </template>
 
 
 <script setup lang="ts">
 import { computed, watch, ref } from "vue";
 import type { Blog } from "../types/blog";
-import { walk } from "vue/compiler-sfc";
 
 interface Props {
   blog: Blog;
@@ -180,7 +180,7 @@ const showImage = computed(() => !!imgSrc.value && imgSrc.value !== PLACHOLDER);
 const emit = defineEmits<{
   (e: "update", id: number): void;
   (e: "delete", id: number): void;
-  (e: "toggle", id: number, published: boolean): void;
+  (e: "toggle", id: number, data: Blog): void;
 }>();
 
 watch(
@@ -204,7 +204,7 @@ watch(
 );
 
 watch(localPublished, (newValue) => {
-  emit("toggle", props.blog.id, newValue);
+  emit("toggle", props.blog.id, {...props.blog,published: newValue});
 });
 
 // Computed property สำหรับตัดเนื้อหา
@@ -233,7 +233,6 @@ const handleDelete = () => {
   emit("delete", props.blog.id);
 };
 
-watch(localPublished, (v) => {
-  emit("toggle", props.blog.id, v);
-});
+
 </script>
+

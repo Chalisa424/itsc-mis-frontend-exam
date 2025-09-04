@@ -201,7 +201,7 @@ const handleDrop = (event: DragEvent) => {
   }
 };
 
-//ลบlink preview เมื่อ component5^dme]kp
+//ลบlink preview 
 onBeforeMount(() => {
   if(imagePreview.value && imagePreview.value.startsWith('blob:')){
     URL.revokeObjectURL(imagePreview.value)
@@ -248,8 +248,7 @@ const handleSubmit = async () => {
     alert("กรุณากรอกหัวข้อและเนื้อหา");
     return;
   }
-   
-  isSubmitting.value =true;
+  
 
   try {
     //ส่งข้อมูลไป store

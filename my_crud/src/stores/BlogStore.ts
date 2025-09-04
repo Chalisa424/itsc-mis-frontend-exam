@@ -23,7 +23,7 @@ function normalistImgUrl(url?: string | null): string | null {
   return `${API_ORIGIN}${normalizedPath}`;
 }
 
-//แปลง Blog จาก APIแบบที่ UI ใช้
+//แปลง Blog จาก APIแบบที่ UI ใช้ Map feild มาจาก model api.ts
 function toAppModel(b: BlogApi): Blog {
   return {
     id: b.id,
@@ -33,8 +33,8 @@ function toAppModel(b: BlogApi): Blog {
     published: b.active,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
-    hit: b.hit,
-    pin: b.pin,
+    hit: b.hit,//จำนวนครั้งที่บทความถูกเปิดดู (view count)
+    pin: b.pin,//บทความนั้นถูก “ปักหมุด” ไว้บนสุดมั้ย
   };
 }
 
@@ -43,26 +43,8 @@ export const useBlogStore = defineStore("blog", () => {
   const blogs = ref<Blog[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
-  // ฟิลเตอร์ฝั่ง UI
-  const searchQuery = ref("");
-  const showOnlyActive = ref(false);
 
-  // ----- Getters
-  const filteredBlogs = computed(() => {
-    let list = blogs.value;
-    const q = searchQuery.value.toLowerCase();
-    // ค้นหาจาก title+content
-    if (q) {
-      list = list.filter(
-        (b) =>
-          b.title.toLowerCase().includes(q) ||
-          b.content.toLowerCase().includes(q)
-      );
-    }
-    if (showOnlyActive.value) list = list.filter((b) => b.published);
-    return list;
-  });
-
+  // ----- Actions (CRUD / side-effects เท่านั้น)
   // Get /blogs รองรับ page/size/q/show
   const fetchBlogs = async (param?: {
     page?: number;
@@ -76,7 +58,7 @@ export const useBlogStore = defineStore("blog", () => {
     let page = 1;
     let size = 10000;
     let q: string | undefined = undefined;
-    let show: "all" | "active" = showOnlyActive.value ? "active" : "all";
+    let show: "all" | "active" = "all";
     if (param) {
       if (param.page !== undefined && param.page !== null) page = param.page;
 
@@ -91,16 +73,9 @@ export const useBlogStore = defineStore("blog", () => {
       const res = await http.get<BlogListResponse>("/blogs", {
         params: { page, size, q, show },
       });
-      console.log("API blog:", res.status, res.data);
       blogs.value = res.data.rows.map(toAppModel);
-      console.log("[STORE] blogs after map ->", blogs.value.length);
       return res.data;
     } catch (e: any) {
-      console.log(
-        "blog after map",
-        e?.response?.status,
-        e?.response?.data || e
-      );
       error.value = e?.response?.data?.error || "Failed to fetch blogs";
       throw e;
     } finally {
@@ -187,26 +162,19 @@ export const useBlogStore = defineStore("blog", () => {
 
     if (isToggleOnly) {
       try {
-        const res = await http.put<BlogApi>( 
+        await http.put<BlogApi>( 
           `/blogs/${id}`,
           { active: payload.published },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
+          { headers: {"Content-Type": "application/json"}}
         );
-        const updated = toAppModel(res.data);
-        blogs.value[i] = updated;
-        return updated;
       } catch (e: any) {
         error.value = e?.response?.data?.error;
         throw e;
       }
     }
 
-    loading.value = true;
     const prev = { ...blogs.value[i] }; // เผื่อ rollback
+    loading.value = true;
     blogs.value[i] = {
       ...blogs.value[i],
       ...(payload.title !== undefined ? { title: payload.title } : {}),
@@ -219,10 +187,9 @@ export const useBlogStore = defineStore("blog", () => {
         const fd = new FormData();
         if (payload.title != null) fd.append("title", payload.title);
         if (payload.content != null) fd.append("content", payload.content);
-        if (payload.published != null)
-          fd.append("active", payload.published.toString());
+        if (payload.published != null) fd.append("active", payload.published.toString());
+          fd.append("blog_img", payload.image);
 
-        fd.append("blog_img", payload.image);
         res = await http.put<BlogApi>(`/blogs/${id}`, fd, {
           headers: {
             "Content-Type": "multipart/form-data",
@@ -305,11 +272,6 @@ export const useBlogStore = defineStore("blog", () => {
     blogs,
     loading,
     error,
-    searchQuery,
-    showOnlyActive,
-
-    //getter
-    filteredBlogs,
 
     //action
     fetchBlogs,

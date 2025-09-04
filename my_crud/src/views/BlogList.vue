@@ -1,112 +1,99 @@
 <template>
   <div>
-    <Navbar />  
-  <div class="bg-gray-50 p-6"> 
-    <!-- Header -->
-    <div class="max-w-3/4 mx-auto">
-      <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <div class="flex items-center justify-between mb-8">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">บทความ</h1>
+    <Navbar />
+    <div class="bg-gray-50 p-6">
+      <!-- Header -->
+      <div class="max-w-3/4 mx-auto">
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900 mb-2">บทความ</h1>
+            </div>
+
+            <!-- router link -->
+            <router-link
+              to="/blogs/create"
+              class="bg-blue-600 hover:bg-blue-700 text-lg text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md flex items-center"
+            >
+              <svg
+                class="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              เพิ่มบทความ
+            </router-link>
           </div>
 
-          <!-- router link -->
-          <router-link
-            to="/blogs/create"
-            class="bg-blue-600 hover:bg-blue-700 text-lg text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md flex items-center"
+          <!-- Loading State -->
+          <div
+            class="flex items-center justify-center"
+            v-if="blogStore.loading"
           >
-            <svg
-              class="w-5 h-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            เพิ่มบทความ
-          </router-link>
-        </div>
-
-        <!-- Loading State -->
-        <div class="flex items-center justify-center" v-if="blogStore.loading">
             <div
               class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 max-auto"
             ></div>
-        </div>
-
-        <!-- Search and Filer -->
-        <SearchBar />
-        <div class="p-6 mb-6">
-          <!-- Filter Checkbox -->
-          <div class="flex items-center">
-            <label class="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="showAll"
-                class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span class="ml-2 text-lg text-gray-700">แสดงบทความทั้งหมด</span>
-            </label>
           </div>
-        </div>
 
-        <!-- Blog List -->
-        <div class="space-y-4">
-          <BlogCard
-            v-for="blog in pagedBlogs"
-            :key="blog.id"
-            :blog="blog"
-            @update="handleUpdateBlog"
-            @delete="handleDeleteBlog"
-            @toggle="handleToggleBlog"
-          />
-        </div>
+          <!-- Search and Filer -->
+          <SearchBar />
+          <div class="p-6 mb-6">
+            <!-- Filter Checkbox -->
+            <div class="flex items-center">
+              <label class="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="showAll"
+                  class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span class="ml-2 text-lg text-gray-700"
+                  >แสดงบทความทั้งหมด</span
+                >
+              </label>
+            </div>
+          </div>
 
-        <!-- Empty State -->
-        <div v-if="blogStore.loading && !pagedBlogs.length" class="text-center py-12">
-          <svg
-            class="w-16 h-16 text-gray-400 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          <!-- Blog List -->
+          <div class="space-y-4">
+            <BlogCard
+              v-for="blog in pagedBlogs"
+              :key="blog.id"
+              :blog="blog"
+              @update="handleUpdateBlog"
+              @delete="handleDeleteBlog"
+              @toggle="handleToggleBlog"
             />
-          </svg>
-          <p class="text-gray-600 text-lg"></p>
-        </div>
-        <!-- footer -->
-        <div class = "mt-6 flex items-center justify-between tex-lg text-gray-700">
-          <div>
-              แสดง {{ pagedBlogs.length }} รายการ จากทั้งหมด {{ totalItems }} รายการ
           </div>
-          <div class="flex items-center gap-2">
-            <span>จำนวนต่อหน้า</span>
-            <select 
-            v-model="pageSize"
-            @change="page = 1"
-            class="border border-gray-300 rounded-lg px-3 py-2 bq-white"
-            >
-          <option :value="5">5</option>
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-          <option :value="50">50</option>
-          </select>
-          </div>
-        </div>
 
+          <!-- footer -->
+          <div
+            class="mt-6 flex items-center justify-between tex-lg text-gray-700"
+          >
+            <div>แสดง {{ pagedBlogs.length }} รายการ</div>
+            <div class="flex items-center gap-2">
+              <span>จำนวนต่อหน้า</span>
+              <select
+                v-model="pageSize"
+                @change="page = 1"
+                class="border border-gray-300 rounded-lg px-3 py-2 bq-white"
+              >
+                <option :value="5">5</option>
+                <option :value="10">10</option>
+                <option :value="20">20</option>
+                <option :value="50">50</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
   </div>
 </template>
 
@@ -121,38 +108,51 @@ import Navbar from "../components/Navbar.vue";
 const router = useRouter();
 const blogStore = useBlogStore();
 
-//filter แสดงบทความทั้งหมด
-const showAll = ref(true);
+// Local UI state
+const searchQuery = ref("");
+const showAll = ref<boolean>(true);
 
-const applyShowAll = () =>{
-  blogStore.showOnlyActive  = !showAll.value
-}
-
-//checkbox เปลี่ยน
-
-watch(showAll, (val) => {
-      blogStore.showOnlyActive = !val
+// การโหลดข้อมูล
+onMounted(async () => {
+  // ถ้าต้องการให้ server กรองเลย ให้ส่ง q/show เข้าไป
+  // await blogStore.fetchBlogs({ q: searchQuery.value || undefined, show: showAll.value ? "all" : "active" });
+  await blogStore.fetchBlogs();
 })
 
-onMounted(async ()=>{
-  blogStore.showOnlyActive =!showAll.value
-  await blogStore.fetchBlogs()
-  
-})
+  // ----- Search Getters กรองผลลัพธ์ฝั่ง Client
+  const filteredBlogs = computed(() => {
+    const q = searchQuery.value.toLowerCase();
+    let list = blogStore.blogs
+    // ค้นหาจาก title+content
+    if (q) {
+      list = list.filter(
+        (b) =>
+          b.title.toLowerCase().includes(q) ||
+          b.content.toLowerCase().includes(q)
+      );
+    }
+    //ถ้า showAll เป็น false → กรองให้เหลือเฉพาะบทความที่ published
+    if (showAll.value) list = list.filter((b) => b.published);
+    return list;
+  });
 
-//Pagination
-const page = ref(1)
-const pageSize =ref (10)
-const totalItems = computed(() => (blogStore.filteredBlogs ?? []).length);
+// ----------------Pagination------------------- (local)
+const page = ref<number>(1);
+const pageSize = ref<number>(10);
+
+watch([filteredBlogs, pageSize], () => {
+  page.value = 1;
+});//// พอผลลัพธ์เปลี่ยนหรือ pageSize เปลี่ยน ให้รีเซ็ตไปหน้าแรก
 
 
 const pagedBlogs = computed(() => {
-  const list = blogStore.filteredBlogs ?? [];
   const start = (page.value - 1) * pageSize.value;
   const end = start + pageSize.value;
-  return list.slice(start, end);
+  return filteredBlogs.value.slice(start, end);
 });
 
+// --------------- Handlers -----------------------
+//Event handlers (เชื่อม UI => Store)
 const handleUpdateBlog = (blogId: number) => {
   router.push(`/blogs/${blogId}/update`);
 };
@@ -163,15 +163,11 @@ const handleDeleteBlog = async (blogId: number) => {
   }
 };
 
-const handleToggleBlog = async (blogId: number, published: boolean) => {
-
-  try{
-    await blogStore.updateBlog(blogId, {published})
-  }catch (e) {
-    console.error('toggle failed',e)
-    }
+const handleToggleBlog = async (blogId: number, data: any) => {
+  try {
+    await blogStore.updateBlog(blogId, data); ///get data ทั้งหมด
+  } catch (e) {
+    console.error("toggle failed", e);
   }
-
-
-
+};
 </script>
