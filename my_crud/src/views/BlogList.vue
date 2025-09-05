@@ -33,7 +33,6 @@
 
             <!-- กลุ่มขวา Toggle แสดงทั้งหมด -->
             <ToggleSwitch v-model="showAll" size="md"> แสดงทั้งหมด </ToggleSwitch>
-
           </div>
 
           <!-- Loading State -->
@@ -45,21 +44,28 @@
               class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 max-auto"
             ></div>
           </div>
+          
 
           <!-- Search and Filer -->
-          <SearchBar 
-          class="py-6"
-          />
+          <SearchBar />
+
+           <!-- หัวข้อ Select multiple-->
+           <div class="flex mt-4 border-t border-b border-gray-300 px-3 py-3 flex items-center">
+            <input 
+              type="checkbox"
+              :checked="allSelected"
+              @change ="toggleSelectAll(($event.target as HTMLInputElement).checked)"
+              class="w-6 h-6 text-lue-600 bg-gray-100 border-gray-300 rounded"
+              />
+              <span class="flex-1 px-50 ml-3 font-semibold text-2xl text-gray-700">หัวข้อ</span>
+           </div>
 
           <!-- Blog List -->
-          <div class="space-y-4">
+          <div class="space-y-4 py-5">
             <BlogCard
               v-for="blog in pagedBlogs"
               :key="blog.id"
               :blog="blog"
-              @update="handleUpdateBlog"
-              @delete="handleDeleteBlog"
-              @toggle="handleToggleBlog"
             />
           </div>
 
@@ -67,7 +73,9 @@
           <div
             class="mt-6 flex items-center justify-between tex-lg text-gray-700"
           >
-            <div>แสดง {{ pagedBlogs.length }} รายการ</div>
+            <div>แสดง {{ pagedBlogs.length }} รายการ
+              <span v-if="selectedIds.size">• เลือก {{ selectedIds.size }} รายการ</span>
+            </div>
             <div class="flex items-center gap-2">
               <span>จำนวนต่อหน้า</span>
               <select
@@ -104,6 +112,9 @@ const blogStore = useBlogStore();
 const searchQuery = ref("");
 const showAll = ref<boolean>(true); //// กรองให้ถูกทิศ: เปิด (true) = แสดงทั้งหมด, ปิด (false) = เฉพาะเผยแพร่
 
+// multiple select state
+const selectedIds = ref<Set<number>>(new Set());
+
 // การโหลดข้อมูล
 onMounted(async () => {
   // ถ้าต้องการให้ server กรองเลย ให้ส่ง q/show เข้าไป
@@ -130,7 +141,26 @@ const filteredBlogs = computed(() => {
   return list;
 });
 
-// ----------------Pagination------------------- (local)
+//---------------- Multiple Select----------------
+const allSelected = computed(() => {
+  if(!pagedBlogs.value.length)return false;
+  return pagedBlogs.value.every((b) => selectedIds.value.has(b.id))
+})
+
+function toggleSelectAll(checked: boolean) {
+  if (checked) {
+    pagedBlogs.value.forEach((b) => selectedIds.value.add(b.id));
+  } else {
+    pagedBlogs.value.forEach((b) => selectedIds.value.delete(b.id));
+  }
+}
+
+function toggleSelectOne(id: number, checked: boolean) {
+  if (checked) selectedIds.value.add(id);
+  else selectedIds.value.delete(id);
+}
+
+// -------------------Pagination------------------- 
 const page = ref<number>(1);
 const pageSize = ref<number>(10);
 
@@ -153,6 +183,7 @@ const handleUpdateBlog = (blogId: number) => {
 const handleDeleteBlog = async (blogId: number) => {
   if (confirm("Confirm to Delete ?")) {
     await blogStore.deleteBlog(blogId);
+    selectedIds.value.delete(blogId);
   }
 };
 

@@ -44,9 +44,9 @@
         <router-link
           v-if="localPublished"
           class="text-xl font-semibold text-gray-600 line-clamp-2 ml-4 flex-1 text-left hover:underline"
-          :to="`/blogs/${props.blog.id}`"
+          :to="`/blogs/${blog.id}`"
         >
-          {{ props.blog.title }}
+          {{ blog.title }}
         </router-link>
 
         <!-- สถานะ -->
@@ -56,6 +56,7 @@
               type="checkbox"
               v-model="localPublished"
               class="sr-only peer"
+              :disabled="busy"
             />
             <div
               class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"
@@ -67,17 +68,13 @@
         </div>
       </div>
 
-      <!-- Content -->
-      <p v-if="localPublished" class="text-gray-600 text-lg mb-4">
-        {{ trunContent }}
-      </p>
 
       <!-- Footer: Date and Buttons -->
-      <div class="flex items-center justify-between pt-3">
+      <div class="flex items-center justify-between pt-15">
         <!-- Date -->
         <div
           v-if="localPublished"
-          class="flex items-center text-gray-500 text-lg"
+          class="flex px-4 items-center text-gray-500 text-lg"
         >
           <svg
             class="w-4 h-4 mr-1"
@@ -92,7 +89,7 @@
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          {{ formatDate(props.blog.createdAt) }}
+          {{ formatDate(blog.createdAt) }}
         </div>
 
         <!-- แสดงสถานะ "ซ่อนอยู่" เมื่อบทความถูกซ่อน -->
@@ -118,6 +115,7 @@
           <!-- Edit Button -->
           <button
             @click="handleUpdate"
+            :disabled="busy"
             class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
             title="แก้ไข"
           >
@@ -139,6 +137,7 @@
           <!-- Delete Button -->
           <button
             @click="handleDelete"
+            :disabled="busy"
             class="p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-sm"
             title="ลบ"
           >
@@ -167,22 +166,23 @@
 <script setup lang="ts">
 import { computed, watch, ref } from "vue";
 import type { Blog } from "../types/blog";
+import { useRouter } from "vue-router";
+import { useBlogStore } from "../stores/BlogStore";
+import dayjs from "dayjs";
 
 interface Props {
   blog: Blog;
 }
 const props = defineProps<Props>();
 
+const router = useRouter();
+const blogStore = useBlogStore();
+
 const PLACHOLDER = "/placeholder-image.jpg";
 const imgSrc = ref(props.blog.imageUrl || PLACHOLDER);
 const showImage = computed(() => !!imgSrc.value && imgSrc.value !== PLACHOLDER);
-
-const emit = defineEmits<{
-  (e: "update", id: number): void;
-  (e: "delete", id: number): void;
-  (e: "toggle", id: number, data: Blog): void;
-}>();
-
+const busy = ref(false)
+//sync รูป
 watch(
   () => props.blog.imageUrl,
   (v) => {
@@ -190,10 +190,12 @@ watch(
   }
 );
 
+//รูปพัง
 const onImageError = () => {
   imgSrc.value = PLACHOLDER;
 };
 
+//สถานะเผยแพร่
 const localPublished = ref<boolean>(props.blog.published ?? false);
 
 watch(
@@ -203,35 +205,48 @@ watch(
   }
 );
 
-watch(localPublished, (newValue) => {
-  emit("toggle", props.blog.id, {...props.blog,published: newValue});
+// เมื่อสวิตช์เปลี่ยน → call store.updateBlog แบบ toggle-only
+watch(localPublished, async(newValue, oldValue) => {
+  if (newValue === oldValue) return;
+  try {
+    busy.value = true;
+    await blogStore.updateBlog(props.blog.id, { published: newValue });
+    // store.updateBlog จะอัปเดต cache ให้เองอยู่แล้ว
+  } catch (e) {
+    console.error("toggle failed", e);
+    // rollback UI ถ้าพัง
+    localPublished.value = oldValue ?? false;
+    alert("อัปเดตสถานะไม่สำเร็จ");
+  } finally {
+    busy.value = false;
+  }
 });
 
-// Computed property สำหรับตัดเนื้อหา
-const trunContent = computed(() => {
-  return props.blog.content.length > 100
-    ? props.blog.content.substring(0, 100) + "..."
-    : props.blog.content;
-});
 
 //  Function จัดรูปแบบวันที่
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("th-TH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return dayjs(dateString).format('D MMM YYYY')
 };
-//  Function จัดการ edit
+
+//  Function ไปหน้า edit
 const handleUpdate = () => {
-  emit("update", props.blog.id);
+  router.push(`/blogs/${props.blog.id}/update`);
 };
 
 //  Function จัดการ delete
-const handleDelete = () => {
-  emit("delete", props.blog.id);
+const handleDelete = async () => {
+  if (!confirm("Confirm to Delete ?")) return;
+  try {
+    busy.value = true;
+    await blogStore.deleteBlog(props.blog.id);
+  } catch (e) {
+    console.error("delete failed", e);
+    alert("ลบไม่สำเร็จ");
+  } finally {
+    busy.value = false;
+  }
 };
+
 
 
 </script>
