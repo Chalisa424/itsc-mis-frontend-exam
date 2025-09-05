@@ -1,7 +1,15 @@
 <template>
   <div
-    class="flex border boder-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadaow overflow-hidden"
-  >
+    class="flex border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadaow overflow-hidden">
+    <!-- checkbox -->
+     <div class="pt-20 pr-8">
+      <input 
+      type="checkbox"
+      v-model="selectedModel"
+      class="w-6 h-6 text-lue-600 bg-gray-100 border-gray-300 rounded"
+      >
+     </div>
+
     <!-- Image -->
     <div v-if="localPublished" class="w-1/4 min-w-[120px] max-w-[200px]">
       <div v-if="localPublished && showImage" class="w-full h-full">
@@ -172,6 +180,7 @@ import dayjs from "dayjs";
 
 interface Props {
   blog: Blog;
+  selected?: boolean //selectbox ของแต่ละ BlogCard (การเลือก)
 }
 const props = defineProps<Props>();
 
@@ -182,6 +191,8 @@ const PLACHOLDER = "/placeholder-image.jpg";
 const imgSrc = ref(props.blog.imageUrl || PLACHOLDER);
 const showImage = computed(() => !!imgSrc.value && imgSrc.value !== PLACHOLDER);
 const busy = ref(false)
+
+// ----------------------------รูป----------------------------------------
 //sync รูป
 watch(
   () => props.blog.imageUrl,
@@ -195,7 +206,7 @@ const onImageError = () => {
   imgSrc.value = PLACHOLDER;
 };
 
-//สถานะเผยแพร่
+//----------------------------สถานะเผยแพร่----------------------------
 const localPublished = ref<boolean>(props.blog.published ?? false);
 
 watch(
@@ -214,37 +225,37 @@ watch(localPublished, async(newValue, oldValue) => {
     // store.updateBlog จะอัปเดต cache ให้เองอยู่แล้ว
   } catch (e) {
     console.error("toggle failed", e);
-    // rollback UI ถ้าพัง
-    localPublished.value = oldValue ?? false;
-    alert("อัปเดตสถานะไม่สำเร็จ");
   } finally {
     busy.value = false;
   }
 });
+//-------------------------select box-------------------------------------
+//แจ้งกลับเมื่อมีการติ๊ก/ยกเลิกติ๊ก
+const emit = defineEmits<{
+  (e: 'update:selected', v:boolean):void
+  (e: 'request-delete', v:number):void
+}>()
+
+//v-model เชื่อม UI สำหรับ selectbox
+const selectedModel = computed({
+  get: () => !!props.selected,
+  set: (v: boolean) => emit('update:selected', v),
+});
 
 
-//  Function จัดรูปแบบวันที่
+// ------------------------- Function จัดรูปแบบวันที่---------------------------
 const formatDate = (dateString: string) => {
   return dayjs(dateString).format('D MMM YYYY')
 };
 
-//  Function ไปหน้า edit
+// -------------------------- Function ไปหน้า edit---------------------------
 const handleUpdate = () => {
   router.push(`/blogs/${props.blog.id}/update`);
 };
 
 //  Function จัดการ delete
 const handleDelete = async () => {
-  if (!confirm("Confirm to Delete ?")) return;
-  try {
-    busy.value = true;
-    await blogStore.deleteBlog(props.blog.id);
-  } catch (e) {
-    console.error("delete failed", e);
-    alert("ลบไม่สำเร็จ");
-  } finally {
-    busy.value = false;
-  }
+  emit('request-delete', props.blog.id)
 };
 
 

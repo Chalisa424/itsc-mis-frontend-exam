@@ -32,7 +32,9 @@
             </div>
 
             <!-- กลุ่มขวา Toggle แสดงทั้งหมด -->
-            <ToggleSwitch v-model="showAll" size="md"> แสดงทั้งหมด </ToggleSwitch>
+            <ToggleSwitch v-model="showAll" size="md">
+              แสดงทั้งหมด
+            </ToggleSwitch>
           </div>
 
           <!-- Loading State -->
@@ -44,28 +46,48 @@
               class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 max-auto"
             ></div>
           </div>
-          
 
           <!-- Search and Filer -->
           <SearchBar />
 
-           <!-- หัวข้อ Select multiple-->
-           <div class="flex mt-4 border-t border-b border-gray-300 px-3 py-3 flex items-center">
-            <input 
+          <!-- หัวข้อเลือกทั้งหมด Select multiple-->
+          <div
+            class="flex mt-4 border-t border-b border-gray-300 px-4 py-3 flex items-center"
+          >
+            <input
+              ref="selectAllRef"
               type="checkbox"
               :checked="allSelected"
-              @change ="toggleSelectAll(($event.target as HTMLInputElement).checked)"
-              class="w-6 h-6 text-lue-600 bg-gray-100 border-gray-300 rounded"
-              />
-              <span class="flex-1 px-50 ml-3 font-semibold text-2xl text-gray-700">หัวข้อ</span>
-           </div>
+              @change="
+                toggleSelectAll(($event.target as HTMLInputElement).checked)
+              "
+              class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded"
+            />
+            <span class="flex-1 px-50 ml-3 font-semibold text-2xl text-gray-700"
+              >หัวข้อ</span
+            >
+
+            <!-- ปุ่มลบที่เลือก
+            <button
+              @click="onBulkDelete"
+              :disabled="selectedIds.size === 0"
+              class="px-3 py-1.5 rounded bg-red-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ลบที่เลือก
+              <span v-if="selectedIds.size">({{ selectedIds.size }})</span>
+            </button> -->
+          </div>
 
           <!-- Blog List -->
+          <!-- ส่งสถานะ selected และรับอัปเดตจากการ์ด -->
           <div class="space-y-4 py-5">
             <BlogCard
               v-for="blog in pagedBlogs"
               :key="blog.id"
               :blog="blog"
+              :selected="selectedIds.has(blog.id)"
+              @update:selected="(v) => toggleSelectOne(blog.id, v)"
+              @request-delete ="onRequestDelete"
             />
           </div>
 
@@ -73,8 +95,11 @@
           <div
             class="mt-6 flex items-center justify-between tex-lg text-gray-700"
           >
-            <div>แสดง {{ pagedBlogs.length }} รายการ
-              <span v-if="selectedIds.size">• เลือก {{ selectedIds.size }} รายการ</span>
+            <div>
+              แสดง {{ pagedBlogs.length }} รายการ
+              <span v-if="selectedIds.size"
+                >• เลือก {{ selectedIds.size }} รายการ</span
+              >
             </div>
             <div class="flex items-center gap-2">
               <span>จำนวนต่อหน้า</span>
@@ -122,31 +147,62 @@ onMounted(async () => {
   await blogStore.fetchBlogs();
 });
 
-// ----- Search
+// ----- -------------------------------Search---------------------------------------------
 const filteredBlogs = computed(() => {
-  let list = blogStore.blogs ?? []
+  let list = blogStore.blogs ?? [];
   const q = searchQuery.value.trim().toLowerCase();
   // ค้นหาจาก title+content
   if (q) {
     list = list.filter(
-      b =>
-        b.title.toLowerCase().includes(q) ||
-        b.content.toLowerCase().includes(q)
+      (b) =>
+        b.title.toLowerCase().includes(q) || b.content.toLowerCase().includes(q)
     );
   }
   //Toggle แสดงบทความทั้งหมด เปิดสวิตช์ = แสดงทั้งหมด (ไม่กรอง) | ปิดสวิตช์ = เฉพาะเผยแพร่ (ค่อยกรอง)
-  if (!showAll.value){
+  if (!showAll.value) {
     list = list.filter((b) => b.published);
   }
   return list;
 });
 
-//---------------- Multiple Select----------------
-const allSelected = computed(() => {
-  if(!pagedBlogs.value.length)return false;
-  return pagedBlogs.value.every((b) => selectedIds.value.has(b.id))
-})
+// -------------------Pagination-------------------
+const page = ref<number>(1);
+const pageSize = ref<number>(10);
 
+watch([filteredBlogs, pageSize], () => {
+  page.value = 1;
+}); //// พอผลลัพธ์เปลี่ยนหรือ pageSize เปลี่ยน ให้รีเซ็ตไปหน้าแรก
+
+//รายการตามหน้า
+const pagedBlogs = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return filteredBlogs.value.slice(start, end);
+});
+
+//จำนวนที่เลือก
+const selectedOnPageCount = computed(
+  () => pagedBlogs.value.filter((b) => selectedIds.value.has(b.id)).length
+);
+
+//---------------- Multiple Select----------------
+
+// true ถ้าเลือกครบทุกใบในหน้าและหน้าไม่ว่าง
+const allSelected = computed(
+  () =>
+    pagedBlogs.value.length > 0 &&
+    selectedOnPageCount.value === pagedBlogs.value.length
+);
+
+// indeterminate ของ master checkbox
+const selectAllRef = ref<HTMLInputElement | null>(null);
+watch([allSelected, selectedOnPageCount, pagedBlogs], () => {
+  if (!selectAllRef.value) return;
+  selectAllRef.value.indeterminate =
+    selectedOnPageCount.value > 0 && !allSelected.value;
+});
+
+// เลือก/ไม่เลือกทั้งหมด
 function toggleSelectAll(checked: boolean) {
   if (checked) {
     pagedBlogs.value.forEach((b) => selectedIds.value.add(b.id));
@@ -155,43 +211,36 @@ function toggleSelectAll(checked: boolean) {
   }
 }
 
+// เลือก/ไม่เลือกรายการเดียว
 function toggleSelectOne(id: number, checked: boolean) {
   if (checked) selectedIds.value.add(id);
   else selectedIds.value.delete(id);
 }
 
-// -------------------Pagination------------------- 
-const page = ref<number>(1);
-const pageSize = ref<number>(10);
+// ------------------------------ฟังก์ชันลบ (เดี่ยว/หลาย) ------------------------------
+async function onRequestDelete(targetId: number) {
 
-watch([filteredBlogs, pageSize], () => {
-  page.value = 1;
-}); //// พอผลลัพธ์เปลี่ยนหรือ pageSize เปลี่ยน ให้รีเซ็ตไปหน้าแรก
+  const hasSelection = selectedIds.value.size >0;
+  const ids = hasSelection ? Array.from(selectedIds.value): [targetId];
 
-const pagedBlogs = computed(() => {
-  const start = (page.value - 1) * pageSize.value;
-  const end = start + pageSize.value;
-  return filteredBlogs.value.slice(start, end);
-});
-
-// --------------- Handlers -----------------------
-//Event handlers (เชื่อม UI => Store)
-const handleUpdateBlog = (blogId: number) => {
-  router.push(`/blogs/${blogId}/update`);
-};
-
-const handleDeleteBlog = async (blogId: number) => {
-  if (confirm("Confirm to Delete ?")) {
-    await blogStore.deleteBlog(blogId);
-    selectedIds.value.delete(blogId);
+  if(ids.length > 1 ) {
+    await blogStore.deleteMany(ids);
+    selectedIds.value.clear();
+  }else{
+    await blogStore.deleteBlog(targetId);
+    selectedIds.value.delete(targetId);
   }
-};
-
-const handleToggleBlog = async (blogId: number, data: any) => {
-  try {
-    await blogStore.updateBlog(blogId, data); ///get data ทั้งหมด
-  } catch (e) {
-    console.error("toggle failed", e);
-  }
-};
+  
+}
+//// ให้ selectedIds สะอาดเมื่อรายการใน store เปลี่ยน (กัน id ค้าง)
+watch(
+  () => blogStore.blogs.map(b => b.id),
+  (ids) => {
+    const alive = new Set(ids);
+    for (const id of Array.from(selectedIds.value)) {
+      if (!alive.has(id)) selectedIds.value.delete(id);
+    }
+  },
+  { immediate: true }
+);
 </script>
