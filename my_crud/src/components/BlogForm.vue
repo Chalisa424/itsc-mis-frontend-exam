@@ -2,21 +2,25 @@
   <div class="min-h-screen bg-gray-50 p-6">
     <div class="max-w-9/10 mx-auto">
       <div class="bg-white rounded-lg shadow-sm p-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">เพิ่มบทความ</h1>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+          <slot name="title">ฟอร์มบทความ</slot>
+        </h1>
 
-        <form @submit.prevent ="handleSubmit">
+        <form @submit.prevent="handleSubmit">
           <!-- หัวข้อ -->
           <div class="mb-6 py-8">
             <label class="block text-xl font-semibold text-gray-900 mb-3"
-              ><span class="text-red-600">*</span>หัวข้อ</label>
+              ><span class="text-red-600">*</span>หัวข้อ</label
+            >
             <input
               id="title"
               name="title"
               type="text"
               v-model="formData.title"
               required
+              :disabled="disabled || isSubmitting" 
               autocomplete="off"
-              class="block w-full p-5 ps-20 border border-gray-300 rounded-2xl bg-gray-50"
+              class="block w-full p-5 border border-gray-300 rounded-2xl bg-gray-50"
             />
           </div>
           <!-- เนื้อหา -->
@@ -30,6 +34,7 @@
               v-model="formData.content"
               required
               rows="8"
+              :disabled="disabled || isSubmitting"
               autocomplete="off"
               class="block w-full p-4 border border-gray-300 rounded-xl bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
               placeholder="ใส่เนื้อหาบทความ"
@@ -52,43 +57,43 @@
                 'border-2  border-gray-300 rounded-xl p-8 text-center cursor-pointer transition-colors',
                 'bg-gray-50 px-6 py-4',
                 'flex items-center justify-center text-gray-600',
-                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-                 
+                dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300',
+                (disabled || isSubmitting) ? 'opacity-50 pointer-events-none' : '',
               ]"
             >
-            
-            <div class="inline-flex items-center gap-1">
-            <svg
-                class="w-12 h-12 text-gray-400 mx-auto mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              <div class="inline-flex items-center gap-1">
+                <svg
+                  class="w-12 h-12 text-gray-400 mx-auto mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+
+                <p class="text-gray-600 text-lg mb-2">
+                  <span class="text-blue-600 font-medium"
+                    >คลิกเพื่ออัปโหลด</span
+                  >
+                  หรือลากและวางไฟล์ที่นี่ PNG, JPG, GIF up to 10MB
+                </p>
+
+                <input
+                  id="image-upload"
+                  ref="fileInput"
+                  type="file"
+                  accept="image/*"
+                  @change="handleFileSelect"
+                  class="hidden"
                 />
-              </svg>
-
-              <p class="text-gray-600 text-lg mb-2">
-                <span class="text-blue-600 font-medium">คลิกเพื่ออัปโหลด</span>
-                หรือลากและวางไฟล์ที่นี่ PNG, JPG, GIF up to 10MB
-              </p>
-              
-
-              <input
-                id="image-upload"
-                ref="fileInput"
-                type="file"
-                accept="image/*"
-                @change="handleFileSelect"
-                class="hidden"
-              />
+              </div>
             </div>
-            </div>
-           
+
             <!-- Preview Image -->
             <div v-if="imagePreview" class="mt-4">
               <div class="relative inline-block">
@@ -100,6 +105,7 @@
                 <button
                   type="button"
                   @click="removeImage"
+                  :disabled="disabled || isSubmitting"
                   class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                 >
                   <svg
@@ -125,23 +131,22 @@
             </div>
           </div>
 
-        
-
           <!-- ปุ่มดำเนินการ -->
           <div class="flex justify-end space-x-4">
             <button
               type="button"
-              @click="$router.back()"
+              @click="emit('cancel')"
               class="px-6 py-3 border border-gray-300 rounded-lg text-white bg-red-500 hover:bg-red-600"
             >
               ยกเลิก
             </button>
             <button
-                type="submit"
-                 class="px-5 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
-              >
-               บันทึก
-              </button>
+              type="submit"
+              :disabled="disabled || isSubmitting"
+              class="px-5 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+            >
+              บันทึก
+            </button>
           </div>
         </form>
       </div>
@@ -150,24 +155,74 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onBeforeMount } from "vue";
+import { ref, reactive, onBeforeUnmount ,watch} from "vue";
 import { useRouter } from "vue-router";
 import { useBlogStore } from "../stores/BlogStore";
 
 const router = useRouter();
-const blogStore = useBlogStore()
-const fileInput = ref<HTMLInputElement | null>(null);
-const dragActive = ref(false);
-const isSubmitting =ref(false)
+const blogStore = useBlogStore();
+
+type Initial = {
+  title?: string;
+  content?: string;
+  imageUrl?: string | null;//iสำหรับรูปที่มีอยู่แล้วใน server
+  published?: boolean;
+};
+
+
+//ลบ blob URL
+onBeforeUnmount(() => {
+  if (imagePreview.value && imagePreview.value.startsWith("blob:")) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
+});
+
+const props = defineProps<{
+  initial?: Initial;
+  submittText?: string;
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (
+    e: "submit",
+    payload: {
+      title: string;
+      content: string;
+      image: File | null;
+      published: boolean;
+    }
+  ): void;
+  (e: "cancel"): void;
+}>();
+
+const isSubmitting = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null)
+const dragActive = ref(false)
 
 const formData = reactive({
   title: "",
   content: "",
   image: null as File | null,
-  published: false,
+  published: props.initial?.published ?? false,
 });
 
 const imagePreview = ref<string | null>(null);
+
+const applyInitial = (init? : Initial) => {
+  formData.title = init?.title ?? "";
+  formData.content = init?.content ?? "";
+  formData.published = init?.published ?? false;
+
+  // ถ้ามี imageUrl จาก server ให้previewได้ทันที
+  imagePreview.value = init?.imageUrl || null; // ใช้ URL ของรูปที่มีอยู่แล้วถ้ามี
+  formData.image = null; // รูปใหม่ยังไม่ถูกเลือก
+};
+
+applyInitial(props.initial);
+watch(() => props.initial, (val) => applyInitial(val), { deep: true });
+
+
 
 // เปิด file dialog
 const triggerFileInput = () => {
@@ -188,10 +243,7 @@ const handleDragOver = (event: DragEvent) => {
   dragActive.value = true;
 };
 
-const handleDragLeave = () => {
-  dragActive.value = false;
-};
-
+const handleDragLeave = () => {dragActive.value = false}
 const handleDrop = (event: DragEvent) => {
   event.preventDefault();
   dragActive.value = false;
@@ -200,13 +252,6 @@ const handleDrop = (event: DragEvent) => {
     processImage(event.dataTransfer.files[0]);
   }
 };
-
-//ลบlink preview 
-onBeforeMount(() => {
-  if(imagePreview.value && imagePreview.value.startsWith('blob:')){
-    URL.revokeObjectURL(imagePreview.value)
-  }
-})
 
 // Process image and create preview
 const processImage = (file: File) => {
@@ -224,17 +269,20 @@ const processImage = (file: File) => {
 
   formData.image = file;
 
-  // สร้าง preview ด้วย Blob URL
+  // เคลียร์ preview เดิม (ถ้าเป็น blob)
+  if (imagePreview.value?.startsWith("blob:")) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
   imagePreview.value = URL.createObjectURL(file);
 };
 
 // ลบรูปภาพ
 const removeImage = () => {
-//ลบlink blob 
-  if(imagePreview.value && imagePreview.value.startsWith('blob:')){
-    URL.revokeObjectURL(imagePreview.value)
+  //ลบlink blob
+  if (imagePreview.value?.startsWith("blob:")) {
+    URL.revokeObjectURL(imagePreview.value);
   }
-  
+
   formData.image = null;
   imagePreview.value = null;
   if (fileInput.value) {
@@ -248,29 +296,22 @@ const handleSubmit = async () => {
     alert("กรุณากรอกหัวข้อและเนื้อหา");
     return;
   }
-  
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
 
   try {
     //ส่งข้อมูลไป store
-    const blogData ={
+    emit ("submit", {
       title: formData.title,
       content: formData.content,
       image: formData.image,
-      published: formData.published
-    };
-      
-    const result = await blogStore.addBlog(blogData)
-    console.log('Blog crated', result)
-
-    router.push("/blogs"); 
-  } catch (error: any) {
-    console.error("เกิดข้อผิดพลาด:", error);
-    const errorMessage = error.response?.data?.error || "เกิดข้อผิดพลาดในการบันทึก";
-    alert(`เกิดข้อผิดพลาด: ${errorMessage}`);
+      published: formData.published,
+    });
   } finally {
     isSubmitting.value = false;
   }
 };
+
 </script>
 
 <style scoped>
