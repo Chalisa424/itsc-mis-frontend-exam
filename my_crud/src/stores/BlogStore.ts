@@ -11,15 +11,18 @@ function normalistImgUrl(url?: string | null): string | null {
   if (!url) return null;
   //แปลงเป็น "/uploads/blogs/..."
 
-  const isAbsolute = /^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')
-  if (isAbsolute) return url
+  const isAbsolute =
+    /^https?:\/\//i.test(url) ||
+    url.startsWith("blob:") ||
+    url.startsWith("data:");
+  if (isAbsolute) return url;
 
   const path = url.replace(/\\/g, "/");
   // ทำเป็น absolute URL
 
   // ถ้า path ไม่เริ่มด้วย / ให้เพิ่ม / นำหน้า
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  
+
   return `${API_ORIGIN}${normalizedPath}`;
 }
 
@@ -33,8 +36,8 @@ function toAppModel(b: BlogApi): Blog {
     published: b.active,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
-    hit: b.hit,//จำนวนครั้งที่บทความถูกเปิดดู (view count)
-    pin: b.pin,//บทความนั้นถูก “ปักหมุด” ไว้บนสุดมั้ย
+    hit: b.hit, //จำนวนครั้งที่บทความถูกเปิดดู (view count)
+    pin: b.pin, //บทความนั้นถูก “ปักหมุด” ไว้บนสุดมั้ย
   };
 }
 
@@ -139,7 +142,7 @@ export const useBlogStore = defineStore("blog", () => {
     }
   };
 
-  //Put /Blogs/:id
+  /// Put /blogs/:id  — unified: always send multipart/form-data with full fields
   const updateBlog = async (
     id: number,
     payload: {
@@ -151,68 +154,50 @@ export const useBlogStore = defineStore("blog", () => {
   ): Promise<Blog> => {
     error.value = null;
 
-    const i = blogs.value.findIndex((b) => b.id === id);
-    if (i === -1) throw new Error("Blog not Found");
-
-    const isToggleOnly =
-      payload.published !== undefined &&
-      payload.title === undefined &&
-      payload.content === undefined &&
-      payload.image == null;
-
-    if (isToggleOnly) {
-      try {
-        await http.put<BlogApi>( 
-          `/blogs/${id}`,
-          { active: payload.published },
-          { headers: {"Content-Type": "application/json"}}
-        );
-      } catch (e: any) {
-        error.value = e?.response?.data?.error;
-        throw e;
-      }
+    // 1) lock id ให้เป็นตัวเลขที่ใช้ได้
+    const blogId = Number(id);
+    if (!Number.isFinite(blogId)) {
+      throw new Error("Invalid blog id");
     }
 
-    const prev = { ...blogs.value[i] }; // เผื่อ rollback
+    const i = blogs.value.findIndex((b) => b.id === blogId);
+    if (i === -1) throw new Error("Blog not Found");
+
+    const prev = { ...blogs.value[i] }; // rollback ได้
     loading.value = true;
-    blogs.value[i] = {
-      ...blogs.value[i],
-      ...(payload.title !== undefined ? { title: payload.title } : {}),
-      ...(payload.content !== undefined ? { content: payload.content } : {}),
-    };
 
     try {
-      let res;
-      if (payload.image) {
-        const fd = new FormData();
-        if (payload.title != null) fd.append("title", payload.title);
-        if (payload.content != null) fd.append("content", payload.content);
-        if (payload.published != null) fd.append("active", payload.published.toString());
-          fd.append("blog_img", payload.image);
+      // ใช้ค่าจาก payload ถ้ามี ไม่งั้น fallback เป็นค่าปัจจุบัน
+      const current = blogs.value[i];
+      const title = payload.title ?? current.title ?? "";
+      const content = payload.content ?? current.content ?? "";
+      const activeBool = payload.published ?? current.published ?? false;
 
-        res = await http.put<BlogApi>(`/blogs/${id}`, fd, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        });
-      } else {
-        const body: Record<string, any> = {};
-        if (payload.title != null) body.title = payload.title;
-        if (payload.content != null) body.content = payload.content;
-        if (payload.published != null) body.active = payload.published;
-        res = await http.put<BlogApi>(`/blogs/${id}`, body, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+      const fd = new FormData();
+      fd.append("title", title);
+      fd.append("content", content);
+      fd.append("active", activeBool.toString()); // "true"/"false"
+      if (payload.image) {
+        fd.append("blog_img", payload.image);
       }
 
+      const res = await http.put<BlogApi>(`/blogs/${blogId}`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // 2) แปลงผลลัพธ์ แล้ว preserve รูปเดิมถ้า response ไม่ส่งรูปกลับมา
       const updated = toAppModel(res.data);
-      blogs.value[i] = updated;
-      return updated;
+      const merged: Blog = {
+        ...prev,
+        ...updated,
+        imageUrl: updated.imageUrl ?? prev.imageUrl,
+      };
+
+      blogs.value[i] = merged;
+      return merged;
     } catch (e: any) {
-      blogs.value[i] = prev;
-      error.value = e?.response?.data?.error;
+      blogs.value[i] = prev; // rollback
+      error.value = e?.response?.data?.error || "Failed to update blog";
       throw e;
     } finally {
       loading.value = false;
@@ -266,7 +251,6 @@ export const useBlogStore = defineStore("blog", () => {
     }
   };
 
-  
   return {
     //state
     blogs,

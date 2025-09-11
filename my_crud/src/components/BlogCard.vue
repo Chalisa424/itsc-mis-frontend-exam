@@ -167,7 +167,17 @@
       </div>
     </div>
   </div>
-
+  <div>
+  <deletePopUp
+    v-model="showDelete"
+    :itemName="blog.title"
+    :loading="deleting"
+    :error="deleteError"
+    @confirm="confirmDelete"
+    @cancel="cancelDelete"
+  />
+  </div>
+  
 </template>
 
 
@@ -177,6 +187,8 @@ import type { Blog } from "../types/blog";
 import { useRouter } from "vue-router";
 import { useBlogStore } from "../stores/BlogStore";
 import dayjs from "dayjs";
+import deletePopUp from "./deletePopUp.vue";
+
 
 interface Props {
   blog: Blog;
@@ -191,6 +203,11 @@ const PLACHOLDER = "/placeholder-image.jpg";
 const imgSrc = ref(props.blog.imageUrl || PLACHOLDER);
 const showImage = computed(() => !!imgSrc.value && imgSrc.value !== PLACHOLDER);
 const busy = ref(false)
+
+const showDelete = ref(false);             
+const deleting = ref(false);               
+const deleteError = ref<string | null>(null);
+
 
 // ----------------------------รูป----------------------------------------
 //sync รูป
@@ -254,10 +271,26 @@ const handleUpdate = () => {
 };
 
 //  Function จัดการ delete
-const handleDelete = async () => {
-  emit('request-delete', props.blog.id)
+const handleDelete = () => {
+  deleteError.value = null;
+  showDelete.value = true;   // เปิดโมดัล
 };
 
+const confirmDelete = async () => {
+  try {
+    deleting.value = true;
+    emit('request-delete', props.blog.id); // ให้พาเรนต์ไปลบจริง
+    showDelete.value = false;              // ปิดโมดัล
+  } catch (e: any) {
+    deleteError.value = e?.response?.data?.error ?? 'ลบไม่สำเร็จ';
+  } finally {
+    deleting.value = false;
+  }
+};
+
+const cancelDelete = () => {
+  showDelete.value = false;  // ปิดโมดัล
+};
 
 
 </script>
