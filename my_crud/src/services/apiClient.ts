@@ -6,10 +6,10 @@ import {
   clearTokens,
 } from './tokenService';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://exam-api.dev.mis.cmu.ac.th/api';
 
 const http = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE_URL
 });
 
 let isRefreshing = false; //ขอ token ใหม่อยู่หรือไม่
@@ -24,7 +24,7 @@ function onRefreshed(token: string) {//ได้tokenใหม่แล้ว  �
 }
 
 http.interceptors.request.use((config) => {
-  const token = getAccessToken();
+  const token = getAccessToken(); 
   if (token) {
     config.headers = config.headers ?? {};
     (config.headers as any).Authorization = `Bearer ${token}`;
