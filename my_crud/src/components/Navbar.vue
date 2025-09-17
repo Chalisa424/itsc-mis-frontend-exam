@@ -31,7 +31,7 @@
         
         <a
           href="#"
-          class="text-2xl text-white hover:underline hover:text-blue-500"
+          class="text-2xl text-white hover:underline hover:text-underline"
           >Logout</a
         >
       </div>
