@@ -47,6 +47,9 @@ export const useBlogStore = defineStore("blog", () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
+   //state สำหรับค้นหา
+   const searchQuery = ref<string>('')
+
   // ----- Actions (CRUD / side-effects เท่านั้น)
   // Get /blogs รองรับ page/size/q/show
   const fetchBlogs = async (param?: {
@@ -93,6 +96,7 @@ export const useBlogStore = defineStore("blog", () => {
     }
   };
 
+  
   // Get /blogs/:id
   const fetchBlogById = async (id: number): Promise<Blog> => {
     loading.value = true;
@@ -263,7 +267,7 @@ export const useBlogStore = defineStore("blog", () => {
     blogs,
     loading,
     error,
-
+    searchQuery,
     //action
     fetchBlogs,
     fetchBlogById,

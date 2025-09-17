@@ -2,7 +2,7 @@
   <div class="min-h-[80vh] flex items-center justify-center bg-gray-50">
     <div class="w-[min(92vw,420px)] rounded-2xl bg-white shadow-lg">
       
-      <div class="px-6 pt-6 pb-4 border-b">
+      <div class="px-6 pt-6 pb-4 ">
         <h1 class="text-center text-2xl font-bold text-gray-900">เข้าสู่ระบบ</h1>
       </div>
 

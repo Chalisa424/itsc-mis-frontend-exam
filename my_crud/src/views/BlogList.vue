@@ -150,7 +150,7 @@ onMounted(async () => {
 // ----- -------------------------------Search---------------------------------------------
 const filteredBlogs = computed(() => {
   let list = blogStore.blogs ?? [];
-  const q = searchQuery.value.trim().toLowerCase();
+  const q = (blogStore.searchQuery ?? '').trim().toLowerCase();
   // ค้นหาจาก title+content
   if (q) {
     list = list.filter(
