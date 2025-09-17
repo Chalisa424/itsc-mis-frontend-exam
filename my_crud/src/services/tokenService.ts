@@ -6,7 +6,7 @@ export function setAccessToken(token:string, expireInSec: number) {
     // บันทึก Access Token ลงใน localStorage 
    localStorage.setItem(ACCESS_KEY, token);
 
-   const expiresAt = (Date.now() + (Number (expireInSec) || 0))* 1000;
+   const expiresAt = Date.now() + (Number (expireInSec) || 0)* 1000;
    localStorage.setItem(EXPIRES_IN_KEY, String(expiresAt)); 
 }
 

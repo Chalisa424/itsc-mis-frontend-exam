@@ -1,18 +1,19 @@
 <template>
   <div
-    class="flex border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadaow overflow-hidden">
+    class="flex border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadaow overflow-hidden"
+  >
     <!-- checkbox -->
-     <div class="pt-20 pr-8">
-      <input 
-      type="checkbox"
-      v-model="selectedModel"
-      class="w-6 h-6 text-lue-600 bg-gray-100 border-gray-300 rounded"
-      >
-     </div>
+    <div class="pt-20 pr-8">
+      <input
+        type="checkbox"
+        v-model="selectedModel"
+        class="w-6 h-6 text-lue-600 bg-gray-100 border-gray-300 rounded"
+      />
+    </div>
 
     <!-- Image -->
-    <div v-if="localPublished" class="w-1/4 min-w-[120px] max-w-[200px]">
-      <div v-if="localPublished && showImage" class="w-full h-full">
+    <div v-if="uiPublished" class="w-1/4 min-w-[120px] max-w-[200px]">
+      <div v-if="showImage" class="w-full h-full">
         <img
           :src="imgSrc"
           @error="onImageError"
@@ -50,7 +51,7 @@
       <div class="flex items-start justify-between mb-3">
         <!-- Title -->
         <router-link
-          v-if="localPublished"
+          v-if="uiPublished"
           class="text-xl font-semibold text-gray-600 line-clamp-2 ml-4 flex-1 text-left hover:underline"
           :to="`/blogs/${blog.id}`"
         >
@@ -62,7 +63,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
-              v-model="localPublished"
+              v-model="uiPublished"
               class="sr-only peer"
               :disabled="busy"
             />
@@ -70,12 +71,11 @@
               class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"
             ></div>
             <span class="ml-2 text-sm font-medium text-gray-900">
-              {{ localPublished ? "เผยแพร่" : "ซ่อน" }}
+              {{ uiPublished ? "เผยแพร่" : "ซ่อน" }}
             </span>
           </label>
         </div>
       </div>
-
 
       <!-- Footer: Date and Buttons -->
       <div class="flex items-center justify-between pt-15">
@@ -168,18 +168,16 @@
     </div>
   </div>
   <div>
-  <deletePopUp
-    v-model="showDelete"
-    :itemName="blog.title"
-    :loading="deleting"
-    :error="deleteError"
-    @confirm="confirmDelete"
-    @cancel="cancelDelete"
-  />
+    <deletePopUp
+      v-model="showDelete"
+      :itemName="blog.title"
+      :loading="deleting"
+      :error="deleteError"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
-  
 </template>
-
 
 <script setup lang="ts">
 import { computed, watch, ref } from "vue";
@@ -189,12 +187,15 @@ import { useBlogStore } from "../stores/BlogStore";
 import dayjs from "dayjs";
 import deletePopUp from "./deletePopUp.vue";
 
-
 interface Props {
   blog: Blog;
-  selected?: boolean //selectbox ของแต่ละ BlogCard (การเลือก)
+  selected?: boolean; //selectbox ของแต่ละ BlogCard (การเลือก)
 }
 const props = defineProps<Props>();
+const emit = defineEmits<{
+  (e: "update:selected", v: boolean): void;
+  (e: "request-delete", v: number): void;
+}>();
 
 const router = useRouter();
 const blogStore = useBlogStore();
@@ -202,13 +203,40 @@ const blogStore = useBlogStore();
 const PLACHOLDER = "/placeholder-image.jpg";
 const imgSrc = ref(props.blog.imageUrl || PLACHOLDER);
 const showImage = computed(() => !!imgSrc.value && imgSrc.value !== PLACHOLDER);
-const busy = ref(false)
 
-const showDelete = ref(false);             
-const deleting = ref(false);               
+const showDelete = ref(false);
+const deleting = ref(false);
 const deleteError = ref<string | null>(null);
 
+// ---- สถานะเผยแพร่สำหรับ UI เท่านั้น ----
+const uiPublished = ref<boolean>(!!props.blog.published);
+watch(
+  () => props.blog.published,
+  (v) => {
+    uiPublished.value = !!v;
+  }
+);
 
+const busy = ref(false);
+
+// toggle สถานะ (optimistic UI)
+async function onToggle(e: Event) {
+  const next = (e.target as HTMLInputElement).checked;
+  const prev = uiPublished.value;
+  uiPublished.value = next; // อัปเดต UI ก่อน
+
+  try {
+    busy.value = true;
+    const id = props.blog?.id;
+    if (!id) throw new Error("missing blog id");
+    await blogStore.updateBlog(id, { published: next });
+  } catch (err) {
+    uiPublished.value = prev; // rollback ถ้า error
+    console.error("toggle failed", err);
+  } finally {
+    busy.value = false;
+  }
+}
 // ----------------------------รูป----------------------------------------
 //sync รูป
 watch(
@@ -235,12 +263,12 @@ watch(
   }
 );
 
-// เมื่อสวิตช์เปลี่ยน → call store.updateBlog แบบ toggle-only
-watch(localPublished, async(newValue, oldValue) => {
+// เมื่อสวิตช์เปลี่ยน updateBlog แบบ toggle-only
+watch(localPublished, async (newValue, oldValue) => {
   if (newValue === oldValue || reverting.value) return;
 
   const id = blogId.value;
-  if(!Number.isFinite(id)){
+  if (!Number.isFinite(id)) {
     console.warn("Invalid blog id on toggle:", props.blog?.id);
     reverting.value = true;
     localPublished.value = oldValue;
@@ -250,7 +278,7 @@ watch(localPublished, async(newValue, oldValue) => {
 
   try {
     busy.value = true;
-    await blogStore.updateBlog(id,{ published: newValue });
+    await blogStore.updateBlog(id, { published: newValue });
     // store.updateBlog จะอัปเดต cache ให้เองอยู่แล้ว
   } catch (e) {
     console.error("toggle failed", e);
@@ -261,23 +289,16 @@ watch(localPublished, async(newValue, oldValue) => {
     busy.value = false;
   }
 });
-//-------------------------select box-------------------------------------
-//แจ้งกลับเมื่อมีการติ๊ก/ยกเลิกติ๊ก
-const emit = defineEmits<{
-  (e: 'update:selected', v:boolean):void
-  (e: 'request-delete', v:number):void
-}>()
 
 //v-model เชื่อม UI สำหรับ selectbox
 const selectedModel = computed({
   get: () => !!props.selected,
-  set: (v: boolean) => emit('update:selected', v),
+  set: (v: boolean) => emit("update:selected", v),
 });
-
 
 // ------------------------- Function จัดรูปแบบวันที่---------------------------
 const formatDate = (dateString: string) => {
-  return dayjs(dateString).format('D MMM YYYY')
+  return dayjs(dateString).format("D MMM YYYY");
 };
 
 // -------------------------- Function ไปหน้า edit---------------------------
@@ -288,25 +309,22 @@ const handleUpdate = () => {
 //  Function จัดการ delete
 const handleDelete = () => {
   deleteError.value = null;
-  showDelete.value = true;   // เปิดโมดัล
+  showDelete.value = true; // เปิดโมดัล
 };
 
 const confirmDelete = async () => {
   try {
     deleting.value = true;
-    emit('request-delete', props.blog.id); // ให้พาเรนต์ไปลบจริง
-    showDelete.value = false;              // ปิดโมดัล
+    emit("request-delete", props.blog.id); // ให้พาเรนต์ไปลบจริง
+    showDelete.value = false; // ปิดโมดัล
   } catch (e: any) {
-    deleteError.value = e?.response?.data?.error ?? 'ลบไม่สำเร็จ';
+    deleteError.value = e?.response?.data?.error ?? "ลบไม่สำเร็จ";
   } finally {
     deleting.value = false;
   }
 };
 
 const cancelDelete = () => {
-  showDelete.value = false;  // ปิดโมดัล
+  showDelete.value = false; // ปิดโมดัล
 };
-
-
 </script>
-
