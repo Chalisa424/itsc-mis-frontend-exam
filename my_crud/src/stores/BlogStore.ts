@@ -5,7 +5,7 @@ import type { Blog } from "../types/blog";
 import type { BlogApi, BlogListResponse } from "../types/api";
 import http from "../services/apiClient";
 
-const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const API_ORIGIN = (API_BASE_URL ?? "").replace(/\/api\/?$/, "");
 
 function normalistImgUrl(url?: string | null): string | null {
   if (!url) return null;
@@ -76,7 +76,14 @@ export const useBlogStore = defineStore("blog", () => {
       const res = await http.get<BlogListResponse>("/blogs", {
         params: { page, size, q, show },
       });
-      blogs.value = res.data.rows.map(toAppModel);
+
+      const payload = res.data as any;
+      const rows: any[]=
+      Array.isArray(payload?.rows) ? payload.rows :
+      Array.isArray(payload?.data) ? payload.data :
+      Array.isArray(payload) ? payload : [];
+
+      blogs.value = rows.map(toAppModel);
       return res.data;
     } catch (e: any) {
       error.value = e?.response?.data?.error || "Failed to fetch blogs";
