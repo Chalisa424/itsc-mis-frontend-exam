@@ -4,6 +4,7 @@ import BlogCreate from '../views/BlogCreate.vue'
 import BlogDetail from '../views/BlogDetail.vue'
 import BlogUpdate from '../views/BlogUpdate.vue'
 import LoginView from '../views/LoginView.vue'
+import LogoutView from '../views/LogoutView.vue'
 
 import { useAuthStore } from '../stores/AuthStore'
 import { getAccessToken, isAccessTokenExpired } from '../services/tokenService'
@@ -40,6 +41,12 @@ const router = createRouter ({
             name:'BlogUpdate',
             component: BlogUpdate,
             meta: { requiresAuth: true }
+        },
+        {
+            path: '/logout',
+            name: 'Logout',
+            component: LogoutView,
+             meta: { requiresAuth: true },
         },
         {
             path:'/',
