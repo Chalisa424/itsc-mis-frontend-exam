@@ -80,7 +80,6 @@ export const useAuthStore = defineStore('auth', {
       try {
         await http.delete('/auth/logout')
       } catch {
-        // เงียบได้
       } finally {
         clearTokens()
         this.user = null
