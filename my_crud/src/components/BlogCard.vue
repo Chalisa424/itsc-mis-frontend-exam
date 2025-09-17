@@ -225,6 +225,8 @@ const onImageError = () => {
 
 //----------------------------สถานะเผยแพร่----------------------------
 const localPublished = ref<boolean>(props.blog.published ?? false);
+const blogId = computed(() => props.blog.id);
+const reverting = ref(false);
 
 watch(
   () => props.blog.published,
@@ -235,13 +237,26 @@ watch(
 
 // เมื่อสวิตช์เปลี่ยน → call store.updateBlog แบบ toggle-only
 watch(localPublished, async(newValue, oldValue) => {
-  if (newValue === oldValue) return;
+  if (newValue === oldValue || reverting.value) return;
+
+  const id = blogId.value;
+  if(!Number.isFinite(id)){
+    console.warn("Invalid blog id on toggle:", props.blog?.id);
+    reverting.value = true;
+    localPublished.value = oldValue;
+    reverting.value = false;
+    return;
+  }
+
   try {
     busy.value = true;
-    await blogStore.updateBlog(props.blog.id, { published: newValue });
+    await blogStore.updateBlog(id,{ published: newValue });
     // store.updateBlog จะอัปเดต cache ให้เองอยู่แล้ว
   } catch (e) {
     console.error("toggle failed", e);
+    reverting.value = false;
+    localPublished.value = oldValue; // กลับค่าเดิม
+    reverting.value = true;
   } finally {
     busy.value = false;
   }

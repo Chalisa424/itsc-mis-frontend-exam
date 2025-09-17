@@ -47,8 +47,8 @@ export const useBlogStore = defineStore("blog", () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
-   //state สำหรับค้นหา
-   const searchQuery = ref<string>('')
+  //state สำหรับค้นหา
+  const searchQuery = ref<string>("");
 
   // ----- Actions (CRUD / side-effects เท่านั้น)
   // Get /blogs รองรับ page/size/q/show
@@ -81,10 +81,13 @@ export const useBlogStore = defineStore("blog", () => {
       });
 
       const payload = res.data as any;
-      const rows: any[]=
-      Array.isArray(payload?.rows) ? payload.rows :
-      Array.isArray(payload?.data) ? payload.data :
-      Array.isArray(payload) ? payload : [];
+      const rows: any[] = Array.isArray(payload?.rows)
+        ? payload.rows
+        : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload)
+        ? payload
+        : [];
 
       blogs.value = rows.map(toAppModel);
       return res.data;
@@ -96,7 +99,6 @@ export const useBlogStore = defineStore("blog", () => {
     }
   };
 
-  
   // Get /blogs/:id
   const fetchBlogById = async (id: number): Promise<Blog> => {
     loading.value = true;
@@ -153,7 +155,7 @@ export const useBlogStore = defineStore("blog", () => {
     }
   };
 
-  /// Put /blogs/:id  — unified: always send multipart/form-data with full fields
+  /// Put /blogs/:id  
   const updateBlog = async (
     id: number,
     payload: {
@@ -165,21 +167,24 @@ export const useBlogStore = defineStore("blog", () => {
   ): Promise<Blog> => {
     error.value = null;
 
-    // 1) lock id ให้เป็นตัวเลขที่ใช้ได้
+    // ให้ id เป็นตัวเลขที่ใช้ได้
     const blogId = Number(id);
     if (!Number.isFinite(blogId)) {
       throw new Error("Invalid blog id");
     }
 
-    const i = blogs.value.findIndex((b) => b.id === blogId);
-    if (i === -1) throw new Error("Blog not Found");
+    // หาใน store ถ้ามีจะใช้ทำ rollback/merge ถ้าไม่มีก็ไม่ต้อง throw ปล่อยอัปเดตต่อได้
+    let i = blogs.value.findIndex((b) => b.id === blogId);
+    const hadLocal = i !== -1;
+    const prev = hadLocal ? { ...blogs.value[i] } : null;
 
-    const prev = { ...blogs.value[i] }; // rollback ได้
     loading.value = true;
-
     try {
-      // ใช้ค่าจาก payload ถ้ามี ไม่งั้น fallback เป็นค่าปัจจุบัน
-      const current = blogs.value[i];
+      // ถ้าไม่มีใน store ให้ใช้ค่า fallback เปล่า ๆ
+      const current: Partial<Blog> = hadLocal
+        ? blogs.value[i]
+        : { title: "", content: "", published: false };
+
       const title = payload.title ?? current.title ?? "";
       const content = payload.content ?? current.content ?? "";
       const activeBool = payload.published ?? current.published ?? false;
@@ -187,27 +192,28 @@ export const useBlogStore = defineStore("blog", () => {
       const fd = new FormData();
       fd.append("title", title);
       fd.append("content", content);
-      fd.append("active", activeBool.toString()); // "true"/"false"
-      if (payload.image) {
-        fd.append("blog_img", payload.image);
-      }
+      fd.append("active", activeBool.toString());
+      if (payload.image) fd.append("blog_img", payload.image);
 
       const res = await http.put<BlogApi>(`/blogs/${blogId}`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // 2) แปลงผลลัพธ์ แล้ว preserve รูปเดิมถ้า response ไม่ส่งรูปกลับมา
       const updated = toAppModel(res.data);
-      const merged: Blog = {
-        ...prev,
-        ...updated,
-        imageUrl: updated.imageUrl ?? prev.imageUrl,
-      };
+      //Merge โดย คง id เดิมและ preserve รูปเดิมถ้า response ไม่ส่งกลับมา
+      const merged: Blog = hadLocal
+        ? { ...prev!, ...updated, id:prev!.id, imageUrl: updated.imageUrl ?? prev!.imageUrl }
+        : updated;
 
-      blogs.value[i] = merged;
+      if (hadLocal) {
+        blogs.value[i] = merged;
+      } else {
+        // ถ้ายังไม่มีใน store แทรกเข้าไป 
+        blogs.value.unshift(merged);
+      }
       return merged;
     } catch (e: any) {
-      blogs.value[i] = prev; // rollback
+      if (hadLocal && prev) blogs.value[i] = prev; // rollback เฉพาะกรณีมีใน store
       error.value = e?.response?.data?.error || "Failed to update blog";
       throw e;
     } finally {

@@ -22,15 +22,15 @@ function onRefreshed(token: string) {//ได้tokenใหม่แล้ว  �
   subscribers.forEach((cb) => cb(token));
   subscribers = []; //ล้าง array หลังจากเรียกทั้งหมดแล้ว
 }
-
+//------------- token ที่ถูกต้อง--------------------
 http.interceptors.request.use((config) => {
-  const token = getAccessToken(); 
+  const token = getAccessToken() //ใช้ token service ดึง access token ที่เก็บไว้
   if (token) {
     config.headers = config.headers ?? {};
-    (config.headers as any).Authorization = `Bearer ${token}`;
+    (config.headers as any).Authorization = `Bearer ${token}`
   }
-  return config;
-});
+  return config
+})
 
 http.interceptors.response.use(
   (res) => res,
@@ -72,6 +72,8 @@ http.interceptors.response.use(
         const expiresIn: number = resp.data?.expires_in ?? 300;
 
         setAccessToken(newToken, expiresIn);
+        http.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+        
         isRefreshing = false;
         onRefreshed(newToken);
 
