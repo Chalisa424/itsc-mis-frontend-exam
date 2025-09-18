@@ -66,20 +66,7 @@
             <span class="flex-1 px-50 ml-3 font-semibold text-2xl text-gray-700"
               >หัวข้อ</span
             >
-
-            <!-- ปุ่มลบที่เลือก
-            <button
-              @click="onBulkDelete"
-              :disabled="selectedIds.size === 0"
-              class="px-3 py-1.5 rounded bg-red-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ลบที่เลือก
-              <span v-if="selectedIds.size">({{ selectedIds.size }})</span>
-            </button> -->
           </div>
-
-          <!-- Blog List -->
-          <!-- ส่งสถานะ selected และรับอัปเดตจากการ์ด -->
           <div class="space-y-4 py-5">
             <BlogCard
               v-for="blog in pagedBlogs"
@@ -106,12 +93,14 @@
               <select
                 v-model="pageSize"
                 @change="page = 1"
+                :disabled="showAll"    
                 class="border border-gray-300 rounded-lg px-3 py-2 bq-white"
               >
                 <option :value="5">5</option>
                 <option :value="10">10</option>
                 <option :value="20">20</option>
-                <option :value="50">50</option>
+                <option :value="30">30</option>
+                <option :value="40">40</option>
               </select>
             </div>
           </div>
@@ -123,20 +112,17 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed, watch } from "vue";
-import { useRouter } from "vue-router";
 import { useBlogStore } from "../stores/BlogStore";
 import BlogCard from "../components/BlogCard.vue";
 import SearchBar from "../components/SearchBar.vue";
 import Navbar from "../components/Navbar.vue";
 import ToggleSwitch from "../components/ToggleSwitch.vue";
 
-const router = useRouter();
 const blogStore = useBlogStore();
 
 // Local UI state
-const searchQuery = ref("");
 const showAll = ref<boolean>(true); //// กรองให้ถูกทิศ: เปิด (true) = แสดงทั้งหมด, ปิด (false) = เฉพาะเผยแพร่
-
+watch(showAll, () => { page.value = 1 }); //พอ showAll เปลี่ยน ให้รีเซ็ตไปหน้าแรก
 // multiple select state
 const selectedIds = ref<Set<number>>(new Set());
 
@@ -158,10 +144,7 @@ const filteredBlogs = computed(() => {
         b.title.toLowerCase().includes(q) || b.content.toLowerCase().includes(q)
     );
   }
-  //Toggle แสดงบทความทั้งหมด เปิดสวิตช์ = แสดงทั้งหมด (ไม่กรอง) | ปิดสวิตช์ = เฉพาะเผยแพร่ (ค่อยกรอง)
-  if (!showAll.value) {
-    list = list.filter((b) => b.published);
-  }
+ 
   return list;
 });
 
@@ -175,6 +158,7 @@ watch([filteredBlogs, pageSize], () => {
 
 //รายการตามหน้า
 const pagedBlogs = computed(() => {
+  if (showAll.value) return filteredBlogs.value ;
   const start = (page.value - 1) * pageSize.value;
   const end = start + pageSize.value;
   return filteredBlogs.value.slice(start, end);

@@ -22,7 +22,7 @@ function onRefreshed(token: string) {//ได้tokenใหม่แล้ว  �
   subscribers.forEach((cb) => cb(token));
   subscribers = []; //ล้าง array หลังจากเรียกทั้งหมดแล้ว
 }
-//------------- token ที่ถูกต้อง--------------------
+//------------- แนบ access token ทุกครั้งที่ขอ--------------------
 http.interceptors.request.use((config) => {
   const token = getAccessToken() //ใช้ token service ดึง access token ที่เก็บไว้
   if (token) {
@@ -31,16 +31,14 @@ http.interceptors.request.use((config) => {
   }
   return config
 })
-
+//--------- ทำงานเมื่อรับ response จาก server -------------
 http.interceptors.response.use(
   (res) => res,
   async (error) => {
-    const original = error.config || {};//บันทึก config ของ request ที่เกิด error เพื่อใช้ส่งใหม่หลัง refresh
-    const status = error?.response?.status; //รหัสสถานะ HTTP (เช่น 401)
-    const url: string = original?.url || '';//ตรวจสอบว่า request นี้คือ endpoint ไหน ป้องกัน infinite loop
-
-    // กัน loop ไม่ refresh บน /auth/login และ /auth/refresh เอง
-    const isAuthPath = url.includes('/auth/login') || url.includes('/auth/refresh');//โทเค็นหมดอายุหรือไม่ถูกต้อง
+    const original = error.config || {};//config คำขอเดิม
+    const status = error?.response?.status; //HTTP status code
+    const url: string = original?.url || ''; //path กัน loop กัน refresh ซ้อน
+    const isAuthPath = url.includes('/auth/login') || url.includes('/auth/refresh');// true ถ้าเป็น path login หรือ refresh
 
     if (status === 401 && !original.__isRetry && !isAuthPath) {
       original.__isRetry = true;

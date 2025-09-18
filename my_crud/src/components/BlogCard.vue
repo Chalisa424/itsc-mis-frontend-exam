@@ -66,6 +66,7 @@
               v-model="uiPublished"
               class="sr-only peer"
               :disabled="busy"
+             
             />
             <div
               class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"
@@ -306,17 +307,17 @@ const handleUpdate = () => {
   router.push(`/blogs/${props.blog.id}/update`);
 };
 
-//  Function จัดการ delete
+//---------------  Function จัดการ delete----------
 const handleDelete = () => {
   deleteError.value = null;
-  showDelete.value = true; // เปิดโมดัล
+  showDelete.value = true; 
 };
 
 const confirmDelete = async () => {
   try {
     deleting.value = true;
-    emit("request-delete", props.blog.id); // ให้พาเรนต์ไปลบจริง
-    showDelete.value = false; // ปิดโมดัล
+    emit("request-delete", props.blog.id); 
+    showDelete.value = false; 
   } catch (e: any) {
     deleteError.value = e?.response?.data?.error ?? "ลบไม่สำเร็จ";
   } finally {
@@ -325,6 +326,6 @@ const confirmDelete = async () => {
 };
 
 const cancelDelete = () => {
-  showDelete.value = false; // ปิดโมดัล
+  showDelete.value = false; 
 };
 </script>
