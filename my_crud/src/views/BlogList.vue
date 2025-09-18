@@ -158,10 +158,10 @@ watch([filteredBlogs, pageSize], () => {
 
 //รายการตามหน้า
 const pagedBlogs = computed(() => {
-  if (showAll.value) return filteredBlogs.value ;
+  if (showAll.value) return filteredBlogs.value ; //ถ้า showAll = true ให้แสดงทั้งหมด
   const start = (page.value - 1) * pageSize.value;
   const end = start + pageSize.value;
-  return filteredBlogs.value.slice(start, end);
+  return filteredBlogs.value.slice(start, end);//โชว์ ตามหน้า
 });
 
 //จำนวนที่เลือก
