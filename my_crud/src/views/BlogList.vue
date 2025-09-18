@@ -200,9 +200,9 @@ function toggleSelectOne(id: number, checked: boolean) {
   if (checked) selectedIds.value.add(id);
   else selectedIds.value.delete(id);
 }
-
+//แก้ไข ให้ติ๊กทั้งหมดค่อยขึ้นปุ่มลบ เพิ่ม refresh token เปลี่ยนจาก store เป็น api ปกติ
 // ------------------------------ฟังก์ชันลบ (เดี่ยว/หลาย) ------------------------------
-async function onRequestDelete(targetId: number) {
+async function onRequestDelete(targetId: number) { //แก้ยุบ อันเดียว ลบปกติ 
 
   const hasSelection = selectedIds.value.size >0;
   const ids = hasSelection ? Array.from(selectedIds.value): [targetId];
