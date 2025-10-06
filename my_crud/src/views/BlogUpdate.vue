@@ -13,7 +13,7 @@
           <div class="h-4 w-5/6 bg-gray-200 rounded"></div>
         </div>
 
-        <!-- Form -->
+        <!-- Form --> 
         <BlogForm
           v-else
           :initial="{

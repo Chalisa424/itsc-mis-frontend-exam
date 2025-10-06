@@ -9,7 +9,7 @@
    <input
       type="checkbox"
       class="sr-only peer"
-      :checked="modelValue"
+      :checked="modelValue" 
       :disabled="disabled"
       role="switch"
       :aria-checked="modelValue"

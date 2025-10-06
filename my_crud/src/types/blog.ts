@@ -1,4 +1,3 @@
-//จาก API: active
 export interface Blog {
   id: number;
   title: string;

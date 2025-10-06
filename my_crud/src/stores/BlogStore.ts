@@ -107,9 +107,9 @@ export const useBlogStore = defineStore("blog", () => {
       const res = await http.get<BlogApi>(`/blogs/${id}`);
       const blog = toAppModel(res.data);
 
-      const i = blogs.value.findIndex((b) => b.id === id);
-      if (i === -1) blogs.value.unshift(blog);
-      else blogs.value[i] = blog;
+      const i = blogs.value.findIndex((b) => b.id === id);//ไม่ต้องเรียกซ้ำ
+      if (i === -1) blogs.value.unshift(blog);//
+      else blogs.value[i] = blog;//
       return blog;
     } catch (e: any) {
       error.value = e?.response?.data?.error || "Failed to fetch blogs";
@@ -199,7 +199,7 @@ export const useBlogStore = defineStore("blog", () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const updated = toAppModel(res.data);
+      const updated = toAppModel(res.data);//ไม่เอา store **blog 
       //Merge โดย คง id เดิมและ preserve รูปเดิมถ้า response ไม่ส่งกลับมา
       const merged: Blog = hadLocal
         ? { ...prev!, ...updated, id:prev!.id, imageUrl: updated.imageUrl ?? prev!.imageUrl }
@@ -222,12 +222,12 @@ export const useBlogStore = defineStore("blog", () => {
   };
 
   // Delete  /blogs/:id
-  const deleteBlog = async (id: number) => {
+  const deleteBlog = async (id: number) => { //แก้
     loading.value = true;
     error.value;
     try {
       await http.delete(`/blogs/${id}`);
-      blogs.value = blogs.value.filter((b) => b.id !== id);
+      blogs.value = blogs.value.filter((b) => b.id !== id);//ลบ
     } catch (e: any) {
       error.value = e?.response?.data?.error || "Failed to delete blog";
       throw e;
