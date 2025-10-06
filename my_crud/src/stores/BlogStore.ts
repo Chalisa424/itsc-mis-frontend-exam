@@ -1,84 +1,55 @@
-import { defineStore } from "pinia";
-import { ref, computed } from "vue";
-import apiClient, { API_BASE_URL } from "../services/apiClient";
-import type { Blog } from "../types/blog";
-import type { BlogApi, BlogListResponse } from "../types/api";
-import http from "../services/apiClient";
+import { ref } from 'vue';
+import http, { API_BASE_URL } from '../services/apiClient';
+import type { Blog } from '../types/blog';
+import type { BlogApi, BlogListResponse } from '../types/api';
 
-const API_ORIGIN = (API_BASE_URL ?? "").replace(/\/api\/?$/, "");
+const API_ORIGIN = (API_BASE_URL ?? '').replace(/\/api\/?$/, '');
 
-function normalistImgUrl(url?: string | null): string | null {
+function normalizeImgUrl(url?: string | null): string | null {
   if (!url) return null;
-  //แปลงเป็น "/uploads/blogs/..."
-
-  const isAbsolute =
-    /^https?:\/\//i.test(url) ||
-    url.startsWith("blob:") ||
-    url.startsWith("data:");
-  if (isAbsolute) return url;
-
-  const path = url.replace(/\\/g, "/");
-  // ทำเป็น absolute URL
-
-  // ถ้า path ไม่เริ่มด้วย / ให้เพิ่ม / นำหน้า
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-
+  if (/^https?:\/\//i.test(url) || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  const path = url.replace(/\\/g, '/');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_ORIGIN}${normalizedPath}`;
 }
 
-//แปลง Blog จาก APIแบบที่ UI ใช้ Map feild มาจาก model api.ts
 function toAppModel(b: BlogApi): Blog {
   return {
     id: b.id,
     title: b.title,
     content: b.content,
-    imageUrl: normalistImgUrl(b.Img?.url),
+    imageUrl: normalizeImgUrl(b.Img?.url),
     published: b.active,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
-    hit: b.hit, //จำนวนครั้งที่บทความถูกเปิดดู (view count)
-    pin: b.pin, //บทความนั้นถูก “ปักหมุด” ไว้บนสุดมั้ย
+    hit: b.hit,
+    pin: b.pin,
   };
 }
 
-export const useBlogStore = defineStore("blog", () => {
-  // ----- State
+export function useBlogs() {
+  // state 
   const blogs = ref<Blog[]>([]);
+  const blog = ref<Blog | null>(null);  
   const loading = ref(false);
   const error = ref<string | null>(null);
+  const searchQuery = ref<string>('');
 
-  //state สำหรับค้นหา
-  const searchQuery = ref<string>("");
-
-  // ----- Actions (CRUD / side-effects เท่านั้น)
-  // Get /blogs รองรับ page/size/q/show
-  const fetchBlogs = async (param?: {
-    page?: number;
-    size?: number;
-    q?: string;
-    show?: "all" | "active";
-  }) => {
+  // GET /blogs
+  async function fetchBlogs(param?: { page?: number; size?: number; q?: string; show?: 'all' | 'active' }) {
     loading.value = true;
     error.value = null;
 
-    let page = 1;
-    let size = 10000;
-    let q: string | undefined = undefined;
-    let show: "all" | "active" = "all";
-    if (param) {
-      if (param.page !== undefined && param.page !== null) page = param.page;
-
-      if (param.size !== undefined && param.size !== null) size = param.size;
-
-      if (param.q !== undefined && param.q !== null) q = param.q;
-
-      if (param.show !== undefined && param.show !== null) show = param.show;
-    }
+    const page = param?.page ?? 1;
+    const size = param?.size ?? 10000;
+    const show = param?.show ?? 'all';
+    const q = param?.q?.trim();
 
     try {
-      const res = await http.get<BlogListResponse>("/blogs", {
-        params: { page, size, q, show },
-      });
+      const params: any = { page, size, show };
+      if (q) params.q = q;
+
+      const res = await http.get<BlogListResponse>('/blogs', { params });
 
       const payload = res.data as any;
       const rows: any[] = Array.isArray(payload?.rows)
@@ -92,189 +63,153 @@ export const useBlogStore = defineStore("blog", () => {
       blogs.value = rows.map(toAppModel);
       return res.data;
     } catch (e: any) {
-      error.value = e?.response?.data?.error || "Failed to fetch blogs";
+      error.value = e?.response?.data?.error || 'Failed to fetch blogs';
       throw e;
     } finally {
       loading.value = false;
     }
-  };
+  }
 
-  // Get /blogs/:id
-  const fetchBlogById = async (id: number): Promise<Blog> => {
+  // GET /blogs/:id
+  async function fetchBlogById(id: number) {
     loading.value = true;
     error.value = null;
     try {
       const res = await http.get<BlogApi>(`/blogs/${id}`);
-      const blog = toAppModel(res.data);
-
-      const i = blogs.value.findIndex((b) => b.id === id);//ไม่ต้องเรียกซ้ำ
-      if (i === -1) blogs.value.unshift(blog);//
-      else blogs.value[i] = blog;//
-      return blog;
+      const b = toAppModel(res.data);
+      blog.value = b; // <-- ใส่ค่า blog เดี่ยวไว้ใช้ที่หน้า detail
+      const i = blogs.value.findIndex((x) => x.id === id);
+      if (i === -1) blogs.value.unshift(b);
+      else blogs.value[i] = b;
+      return b;
     } catch (e: any) {
-      error.value = e?.response?.data?.error || "Failed to fetch blogs";
+      error.value = e?.response?.data?.error || 'Failed to fetch blog';
       throw e;
     } finally {
       loading.value = false;
     }
-  };
+  }
 
-  // Post /blogs
-  const addBlog = async (payload: {
-    title: string;
-    content: string;
-    image?: File | null;
-    published: boolean;
-  }): Promise<Blog> => {
+  // POST /blogs
+  async function addBlog(payload: { title: string; content: string; image?: File | null; published: boolean }) {
     loading.value = true;
     error.value = null;
     try {
       const fd = new FormData();
-      fd.append("title", payload.title);
-      fd.append("content", payload.content);
-      fd.append("active", payload.published.toString());
+      fd.append('title', payload.title);
+      fd.append('content', payload.content);
+      fd.append('active', String(payload.published));
+      if (payload.image) fd.append('blog_img', payload.image);
 
-      if (payload.image) {
-        fd.append("blog_img", payload.image);
-      }
-
-      const res = await http.post<BlogApi>("/blogs", fd, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      const blog = toAppModel(res.data);
-      blogs.value.unshift(blog);
-      return blog;
+      const res = await http.post<BlogApi>('/blogs', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const created = toAppModel(res.data);
+      blogs.value.unshift(created);
+      return created;
     } catch (e: any) {
-      error.value = e?.response?.data?.error || "Failed to create blog";
+      error.value = e?.response?.data?.error || 'Failed to create blog';
       throw e;
     } finally {
       loading.value = false;
     }
-  };
+  }
 
-  /// Put /blogs/:id  
-  const updateBlog = async (
-    id: number,
-    payload: {
-      title?: string;
-      content?: string;
-      image?: File | null;
-      published?: boolean;
-    }
-  ): Promise<Blog> => {
+  // PUT /blogs/:id
+  async function updateBlog(id: number, payload: { title?: string; content?: string; image?: File | null; published?: boolean }) {
+    loading.value = true;
     error.value = null;
 
-    // ให้ id เป็นตัวเลขที่ใช้ได้
     const blogId = Number(id);
-    if (!Number.isFinite(blogId)) {
-      throw new Error("Invalid blog id");
-    }
+    if (!Number.isFinite(blogId)) throw new Error('Invalid blog id');
 
-    // หาใน store ถ้ามีจะใช้ทำ rollback/merge ถ้าไม่มีก็ไม่ต้อง throw ปล่อยอัปเดตต่อได้
-    let i = blogs.value.findIndex((b) => b.id === blogId);
-    const hadLocal = i !== -1;
-    const prev = hadLocal ? { ...blogs.value[i] } : null;
+    const idx = blogs.value.findIndex((b) => b.id === blogId);
+    const hadLocal = idx !== -1;
+    const prev = hadLocal ? { ...blogs.value[idx] } : null;
 
-    loading.value = true;
     try {
-      // ถ้าไม่มีใน store ให้ใช้ค่า fallback เปล่า ๆ
-      const current: Partial<Blog> = hadLocal
-        ? blogs.value[i]
-        : { title: "", content: "", published: false };
-
-      const title = payload.title ?? current.title ?? "";
-      const content = payload.content ?? current.content ?? "";
-      const activeBool = payload.published ?? current.published ?? false;
-
       const fd = new FormData();
-      fd.append("title", title);
-      fd.append("content", content);
-      fd.append("active", activeBool.toString());
-      if (payload.image) fd.append("blog_img", payload.image);
+      if (payload.title !== undefined) fd.append('title', payload.title);
+      if (payload.content !== undefined) fd.append('content', payload.content);
+      if (payload.published !== undefined) fd.append('active', String(payload.published));
+      if (payload.image) fd.append('blog_img', payload.image);
 
-      const res = await http.put<BlogApi>(`/blogs/${blogId}`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await http.put<BlogApi>(`/blogs/${blogId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const updated = toAppModel(res.data);
 
-      const updated = toAppModel(res.data);//ไม่เอา store **blog 
-      //Merge โดย คง id เดิมและ preserve รูปเดิมถ้า response ไม่ส่งกลับมา
       const merged: Blog = hadLocal
-        ? { ...prev!, ...updated, id:prev!.id, imageUrl: updated.imageUrl ?? prev!.imageUrl }
+        ? { ...prev!, ...updated, id: prev!.id, imageUrl: updated.imageUrl ?? prev!.imageUrl }
         : updated;
 
-      if (hadLocal) {
-        blogs.value[i] = merged;
-      } else {
-        // ถ้ายังไม่มีใน store แทรกเข้าไป 
-        blogs.value.unshift(merged);
-      }
+      if (hadLocal) blogs.value[idx] = merged;
+      else blogs.value.unshift(merged);
+
+      if (blog.value?.id === blogId) blog.value = merged;
+
       return merged;
     } catch (e: any) {
-      if (hadLocal && prev) blogs.value[i] = prev; // rollback เฉพาะกรณีมีใน store
-      error.value = e?.response?.data?.error || "Failed to update blog";
+      if (hadLocal && prev) blogs.value[idx] = prev;
+      error.value = e?.response?.data?.error || 'Failed to update blog';
       throw e;
     } finally {
       loading.value = false;
     }
-  };
+  }
 
-  // Delete  /blogs/:id
-  const deleteBlog = async (id: number) => { //แก้
+  // DELETE /blogs/:id
+  async function deleteBlog(id: number) {
     loading.value = true;
-    error.value;
+    error.value = null;
     try {
       await http.delete(`/blogs/${id}`);
-      blogs.value = blogs.value.filter((b) => b.id !== id);//ลบ
+      blogs.value = blogs.value.filter((b) => b.id !== id);
+      if (blog.value?.id === id) blog.value = null;
     } catch (e: any) {
-      error.value = e?.response?.data?.error || "Failed to delete blog";
+      error.value = e?.response?.data?.error || 'Failed to delete blog';
       throw e;
     } finally {
       loading.value = false;
     }
-  };
+  }
 
-  // Put /blogs/:id/remove-image
-  const removeImage = async (id: number) => {
+  // PUT /blogs/:id/remove-image
+  async function removeImage(id: number) {
     loading.value = true;
     error.value = null;
     try {
       await http.put(`/blogs/${id}/remove-image`);
       const i = blogs.value.findIndex((b) => b.id === id);
       if (i !== -1) blogs.value[i] = { ...blogs.value[i], imageUrl: null };
+      if (blog.value?.id === id) blog.value = { ...blog.value, imageUrl: null };
     } catch (e: any) {
-      error.value = e?.response?.data?.error || "Failed to remove image";
+      error.value = e?.response?.data?.error || 'Failed to remove image';
       throw e;
     } finally {
       loading.value = false;
     }
-  };
+  }
 
-  // POST /blogs/delete  { ids: number[] }
-  const deleteMany = async (ids: number[]) => {
+  // POST /blogs/delete
+  async function deleteMany(ids: number[]) {
     loading.value = true;
     error.value = null;
     try {
-      await http.post("/blogs/delete", { ids });
+      await http.post('/blogs/delete', { ids });
       const set = new Set(ids);
       blogs.value = blogs.value.filter((b) => !set.has(b.id));
+      if (blog.value && set.has(blog.value.id)) blog.value = null;
     } catch (e: any) {
-      error.value = e?.response?.data?.error || "Failed to delete blogs";
+      error.value = e?.response?.data?.error || 'Failed to delete blogs';
       throw e;
     } finally {
       loading.value = false;
     }
-  };
+  }
 
   return {
-    //state
-    blogs,
+    blogs,     //ใช้ list  : blogs.value
+    blog,      //ใช้ detail: blog.value
     loading,
     error,
     searchQuery,
-    //action
     fetchBlogs,
     fetchBlogById,
     addBlog,
@@ -283,4 +218,4 @@ export const useBlogStore = defineStore("blog", () => {
     removeImage,
     deleteMany,
   };
-});
+}
