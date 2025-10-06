@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import http from '../services/apiClient';
-import { setAccessToken, setRefreshToken, clearTokens, getAccessToken, isAccessTokenExpired} from '../services/tokenService';
+import { setTokens, clearTokens ,getRefreshToken } from '../services/tokenService';
 
 type User = { username: string } | null;
 
@@ -27,8 +27,11 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('Invalid login response')
         }
 
-        setAccessToken(access_token, expires_in ?? 300)
-        setRefreshToken(refresh_token)
+       setTokens({
+        accessToken: access_token,
+        refreshToken:refresh_token,
+        expiresInSec: expires_in ?? 300,
+       })
 
         // ดึงข้อมูลผู้ใช้
         const me = await http.get('/auth/me')
@@ -61,8 +64,8 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async restore() {
-      const token = getAccessToken()
-      if (!token || isAccessTokenExpired()) {
+      const rt = getRefreshToken()
+      if (!rt) {
         clearTokens()
         this.user = null
         return
@@ -78,8 +81,8 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true
       this.error = null
       try {
-        await http.delete('/auth/logout')
-      } catch {
+        // ถ้ามี endpoint logout ก็เรียกได้; ถ้าไม่มีจะ catch ไว้
+        await http.delete('/auth/logout').catch(()=>{});
       } finally {
         clearTokens()
         this.user = null
