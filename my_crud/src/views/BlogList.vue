@@ -43,8 +43,9 @@
               class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"
             ></div>
           </div>
+
           <!-- Search and Filer -->
-          <SearchBar />
+          <SearchBar v-model="searchQuery"/>
 
           <!-- หัวข้อเลือกทั้งหมด Select multiple-->
           <div
@@ -60,26 +61,53 @@
               class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded"
             />
             <span class="flex-1 px-50 ml-3 font-semibold text-2xl text-gray-700"
-              >หัวข้อ</span>
+              >หัวข้อ</span
+            >
           </div>
+          <!-- ปุ่มลบเฉพาะเมื่อมีการเลือก -->
+          <div
+            v-if="anySelected"
+            class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-md px-4 py-3 mt-3"
+          >
+            <div class="text-amber-900">
+              เลือก {{ selectedIds.size }} รายการ
+            </div>
+            <div class="flex gap-2">
+              <button
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md shadow-sm"
+                @click="confirmDeleteMany"
+              >
+                ลบที่เลือก
+              </button>
+              <button
+                class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md"
+                @click="clearSelection"
+              >
+                ยกเลิกการเลือก
+              </button>
+            </div>
+          </div>
+
+          <!-- รายการบทความ -->
           <div class="space-y-4 py-5">
             <BlogCard
               v-for="blog in pagedBlogs"
               :key="blog.id"
               :blog="blog"
               :selected="selectedIds.has(blog.id)"
-              @update:selected="(v) => toggleSelectOne(blog.id, v)"
+              @update:selected="(checked) => toggleSelectOne(blog.id, checked)"
               @request-delete="onRequestDelete"
             />
           </div>
+
           <!-- footer -->
           <div
             class="mt-6 flex items-center justify-between tex-lg text-gray-700"
           >
             <div>
               แสดง {{ pagedBlogs.length }} รายการ
-              <span v-if="selectedIds.size"
-                >• เลือก {{ selectedIds.size }} รายการ</span
+              <span v-if="selectedIds.size">
+                เลือก {{ selectedIds.size }} รายการ</span
               >
             </div>
             <div class="flex items-center gap-2">
@@ -96,6 +124,33 @@
                 <option :value="30">30</option>
                 <option :value="40">40</option>
               </select>
+              <!-- ตัวควบคุมหน้า: แสดงเมื่อไม่ได้เปิด "แสดงทั้งหมด" -->
+              <div v-if="!showAll" class="flex items-center gap-2 ml-4">
+                <button
+                  class="px-2 py-1 border rounded"
+                  @click="page = 1"
+                  :disabled="page === 1"
+                >
+                 <<
+                </button>
+                
+                <span>หน้า</span>
+                <input
+                  type="number"
+                  min="1"
+                  :max="totalPages"
+                  v-model.number="page"
+                  class="w-16 border rounded px-2 py-1 text-center"
+                />
+                <span>/ {{ totalPages }}</span>
+
+                <button
+                  class="px-2 py-1 border rounded"
+                  @click="page = totalPages"
+                  :disabled="page === totalPages"
+                > >>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -124,15 +179,7 @@ const {
   deleteMany,
 } = useBlogStore();
 
-const FORCE_MIN_MS = 1500;
-const showSpinner = ref(false);
-let startAt = 0;
-let spinerTimer: number | null = null;
-
-const showAll = ref<boolean>(true);
-watch(showAll, () => {
-  page.value = 1;
-});
+const showAll = ref<boolean>(false);
 
 const showInitialSpinner = computed(
   () => showSpinner.value && !blogs.value.length
@@ -142,6 +189,10 @@ const showInitialSpinner = computed(
 const selectedIds = ref<Set<number>>(new Set());
 
 //Loading
+const FORCE_MIN_MS = 1500;
+const showSpinner = ref(false);
+let startAt = 0;
+let spinerTimer: number | null = null;
 watch(loading, (is) => {
   if (is) {
     if (spinerTimer) {
@@ -207,21 +258,39 @@ const pagedBlogs = computed(() => {
   return filteredBlogs.value.slice(start, end);
 });
 
-//จำนวนที่เลือก
+const totalPages = computed(() => {
+  if (showAll.value) return 1;
+  const total = filteredBlogs.value.length;
+  return Math.max(1, Math.ceil(total / pageSize.value));
+});
+
+watch([page, totalPages], () => {
+  if (page.value < 1) page.value = 1;
+  else if (page.value > totalPages.value) page.value = totalPages.value;
+});
+
+function prevPage() {
+  if (page.value > 1) page.value--;
+}
+function nextPage() {
+  if (page.value < totalPages.value) page.value++;
+}
+
+//---------- Multiple Select ----------//
 const selectedOnPageCount = computed(
   () => pagedBlogs.value.filter((b: Blog) => selectedIds.value.has(b.id)).length
 );
 
-//---------------- Multiple Select----------------
-
-// true ถ้าเลือกครบทุกใบในหน้าและหน้าไม่ว่าง
+// เลือกครบทุกใบในหน้า?
 const allSelected = computed(
   () =>
     pagedBlogs.value.length > 0 &&
     selectedOnPageCount.value === pagedBlogs.value.length
 );
 
-// indeterminate ของ master checkbox
+// มีการเลือกอย่างน้อย 1
+const anySelected = computed(() => selectedIds.value.size > 0);
+
 const selectAllRef = ref<HTMLInputElement | null>(null);
 watch([allSelected, selectedOnPageCount, pagedBlogs], () => {
   if (!selectAllRef.value) return;
@@ -242,6 +311,26 @@ function toggleSelectAll(checked: boolean) {
 function toggleSelectOne(id: number, checked: boolean) {
   if (checked) selectedIds.value.add(id);
   else selectedIds.value.delete(id);
+}
+
+// เคลียร์การเลือกทั้งหมด
+function clearSelection() {
+  selectedIds.value.clear();
+}
+
+// ลบหลายรายการ (มี confirm)
+async function confirmDeleteMany() {
+  const ids = Array.from(selectedIds.value);
+  if (!ids.length) return;
+  const ok = window.confirm(`ยืนยันลบ ${ids.length} รายการหรือไม่?`);
+  if (!ok) return;
+
+  try {
+    await deleteMany(ids);
+    selectedIds.value.clear();
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 // ------------------------------ฟังก์ชันลบ (เดี่ยว/หลาย) ------------------------------
