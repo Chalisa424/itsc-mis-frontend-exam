@@ -38,15 +38,11 @@
           </div>
 
           <!-- Loading State -->
-          <div
-            class="flex items-center justify-center"
-            v-if="blogStore.loading"
-          >
+          <div class="flex items-center justify-center" v-if="showSpinner">
             <div
-              class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 max-auto"
+              class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"
             ></div>
           </div>
-
           <!-- Search and Filer -->
           <SearchBar />
 
@@ -64,8 +60,7 @@
               class="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded"
             />
             <span class="flex-1 px-50 ml-3 font-semibold text-2xl text-gray-700"
-              >หัวข้อ</span
-            >
+              >หัวข้อ</span>
           </div>
           <div class="space-y-4 py-5">
             <BlogCard
@@ -74,10 +69,9 @@
               :blog="blog"
               :selected="selectedIds.has(blog.id)"
               @update:selected="(v) => toggleSelectOne(blog.id, v)"
-              @request-delete ="onRequestDelete"
+              @request-delete="onRequestDelete"
             />
           </div>
-
           <!-- footer -->
           <div
             class="mt-6 flex items-center justify-between tex-lg text-gray-700"
@@ -93,7 +87,7 @@
               <select
                 v-model="pageSize"
                 @change="page = 1"
-                :disabled="showAll"    
+                :disabled="showAll"
                 class="border border-gray-300 rounded-lg px-3 py-2 bq-white"
               >
                 <option :value="5">5</option>
@@ -111,40 +105,86 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from "vue";
+import { onMounted, onUnmounted, ref, computed, watch } from "vue";
 import { useBlogStore } from "../stores/BlogStore";
 import BlogCard from "../components/BlogCard.vue";
 import SearchBar from "../components/SearchBar.vue";
 import Navbar from "../components/Navbar.vue";
 import ToggleSwitch from "../components/ToggleSwitch.vue";
+import type { Blog } from "../types/blog";
 
-const blogStore = useBlogStore();
+const {
+  blogs, // ref<Blog[]>
+  blog, // ref<Blog|null>
+  loading, // ref<boolean>
+  error, // ref<string|null>
+  searchQuery, // ref<string>
+  fetchBlogs,
+  deleteBlog,
+  deleteMany,
+} = useBlogStore();
 
-// Local UI state
-const showAll = ref<boolean>(true); //// กรองให้ถูกทิศ: เปิด (true) = แสดงทั้งหมด, ปิด (false) = เฉพาะเผยแพร่
-watch(showAll, () => { page.value = 1 }); //พอ showAll เปลี่ยน ให้รีเซ็ตไปหน้าแรก
+const FORCE_MIN_MS = 1500;
+const showSpinner = ref(false);
+let startAt = 0;
+let spinerTimer: number | null = null;
+
+const showAll = ref<boolean>(true);
+watch(showAll, () => {
+  page.value = 1;
+});
+
+const showInitialSpinner = computed(
+  () => showSpinner.value && !blogs.value.length
+);
+
 // multiple select state
 const selectedIds = ref<Set<number>>(new Set());
 
+//Loading
+watch(loading, (is) => {
+  if (is) {
+    if (spinerTimer) {
+      clearTimeout(spinerTimer);
+      spinerTimer = null;
+    }
+    showSpinner.value = true;
+    startAt = performance.now();
+  } else {
+    const elapsed = performance.now() - startAt;
+    const wait = Math.max(0, FORCE_MIN_MS - elapsed);
+    spinerTimer = window.setTimeout(() => {
+      showSpinner.value = false;
+      spinerTimer = null;
+    }, wait);
+  }
+});
+
 // การโหลดข้อมูล
 onMounted(async () => {
-  // ถ้าต้องการให้ server กรองเลย ให้ส่ง q/show เข้าไป
-  // await blogStore.fetchBlogs({ q: searchQuery.value || undefined, show: showAll.value ? "all" : "active" });
-  await blogStore.fetchBlogs();
+  try {
+    await fetchBlogs();
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+onUnmounted(() => {
+  if (spinerTimer) clearTimeout(spinerTimer);
 });
 
 // ----- -------------------------------Search---------------------------------------------
 const filteredBlogs = computed(() => {
-  let list = blogStore.blogs ?? [];
-  const q = (blogStore.searchQuery ?? '').trim().toLowerCase();
+  let list = blogs.value ?? [];
+  const q = (searchQuery.value ?? "").trim().toLowerCase();
   // ค้นหาจาก title+content
   if (q) {
     list = list.filter(
-      (b) =>
+      (b: Blog) =>
         b.title.toLowerCase().includes(q) || b.content.toLowerCase().includes(q)
     );
   }
- 
+
   return list;
 });
 
@@ -152,21 +192,24 @@ const filteredBlogs = computed(() => {
 const page = ref<number>(1);
 const pageSize = ref<number>(10);
 
+watch(showAll, () => {
+  page.value = 1;
+});
 watch([filteredBlogs, pageSize], () => {
   page.value = 1;
-}); //// พอผลลัพธ์เปลี่ยนหรือ pageSize เปลี่ยน ให้รีเซ็ตไปหน้าแรก
+});
 
 //รายการตามหน้า
 const pagedBlogs = computed(() => {
-  if (showAll.value) return filteredBlogs.value ; //ถ้า showAll = true ให้แสดงทั้งหมด
+  if (showAll.value) return filteredBlogs.value;
   const start = (page.value - 1) * pageSize.value;
   const end = start + pageSize.value;
-  return filteredBlogs.value.slice(start, end);//โชว์ ตามหน้า
+  return filteredBlogs.value.slice(start, end);
 });
 
 //จำนวนที่เลือก
 const selectedOnPageCount = computed(
-  () => pagedBlogs.value.filter((b) => selectedIds.value.has(b.id)).length
+  () => pagedBlogs.value.filter((b: Blog) => selectedIds.value.has(b.id)).length
 );
 
 //---------------- Multiple Select----------------
@@ -189,9 +232,9 @@ watch([allSelected, selectedOnPageCount, pagedBlogs], () => {
 // เลือก/ไม่เลือกทั้งหมด
 function toggleSelectAll(checked: boolean) {
   if (checked) {
-    pagedBlogs.value.forEach((b) => selectedIds.value.add(b.id));
+    pagedBlogs.value.forEach((b: Blog) => selectedIds.value.add(b.id));
   } else {
-    pagedBlogs.value.forEach((b) => selectedIds.value.delete(b.id));
+    pagedBlogs.value.forEach((b: Blog) => selectedIds.value.delete(b.id));
   }
 }
 
@@ -200,25 +243,23 @@ function toggleSelectOne(id: number, checked: boolean) {
   if (checked) selectedIds.value.add(id);
   else selectedIds.value.delete(id);
 }
-//แก้ไข ให้ติ๊กทั้งหมดค่อยขึ้นปุ่มลบ เพิ่ม refresh token เปลี่ยนจาก store เป็น api ปกติ
+
 // ------------------------------ฟังก์ชันลบ (เดี่ยว/หลาย) ------------------------------
-async function onRequestDelete(targetId: number) { //แก้ยุบ อันเดียว ลบปกติ 
+async function onRequestDelete(targetId: number) {
+  const hasSelection = selectedIds.value.size > 0;
+  const ids = hasSelection ? Array.from(selectedIds.value) : [targetId];
 
-  const hasSelection = selectedIds.value.size >0;
-  const ids = hasSelection ? Array.from(selectedIds.value): [targetId];
-
-  if(ids.length > 1 ) {
-    await blogStore.deleteMany(ids);
+  if (ids.length > 1) {
+    await deleteMany(ids);
     selectedIds.value.clear();
-  }else{
-    await blogStore.deleteBlog(targetId);
+  } else {
+    await deleteBlog(targetId);
     selectedIds.value.delete(targetId);
   }
-  
 }
-//// ให้ selectedIds สะอาดเมื่อรายการใน store เปลี่ยน (กัน id ค้าง)
+
 watch(
-  () => blogStore.blogs.map(b => b.id),
+  () => blogs.value.map((b: Blog) => b.id),
   (ids) => {
     const alive = new Set(ids);
     for (const id of Array.from(selectedIds.value)) {
