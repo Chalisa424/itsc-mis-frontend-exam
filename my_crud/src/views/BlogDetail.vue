@@ -82,7 +82,6 @@ import { useBlogStore } from '../stores/BlogStore'
 import type { Blog } from '../types/blog'
 import Navbar from '../components/Navbar.vue'
 
-
 const route = useRoute()
 const router = useRouter()
 const store = useBlogStore()
@@ -91,8 +90,8 @@ const id = Number(route.params.id)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-// ใช้จากแคชใน store ก่อน ถ้าไม่มีค่อย fetch
-const blog = computed<Blog | undefined>(() => store.blogs.find(b => b.id === id))
+// ใช้ blog จาก store โดยตรง ไม่ต้องหาจาก store.blogs
+const blog = ref<Blog | null>(null)
 
 const crumbs = computed<string[]>(()=> [
     blog.value?.title || ''
@@ -100,8 +99,11 @@ const crumbs = computed<string[]>(()=> [
 
 onMounted(async () => {
   try {
-    if (!blog.value) await store.fetchBlogById(id)
+    const fetchedBlog = await store.fetchBlogById(id)
+    blog.value = fetchedBlog // ใช้ค่าที่ return มาจาก function
+    console.log('Local blog:', blog.value)
   } catch (e: any) {
+    console.error('Error:', e)
     error.value = e?.response?.data?.error || 'failed'
   } finally {
     loading.value = false

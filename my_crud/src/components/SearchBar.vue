@@ -22,9 +22,7 @@
 </template>
 <script setup lang="ts">
 import {ref, watch} from 'vue'
-import {useBlogStore} from '../stores/BlogStore'
-
-const blogStore = useBlogStore()
+import { useBlogStore } from "../stores/BlogStore";const blogStore = useBlogStore()
 const searchQuery = ref('')
 
 let  searchTimeout: number | null = null
@@ -35,12 +33,12 @@ const handleSearch = () =>{
     }
 
     searchTimeout = setTimeout (() => {
-        blogStore.searchQuery = searchQuery.value 
+        blogStore.searchQuery.value = searchQuery.value 
     },300)
 }
 
 watch(() => blogStore.searchQuery, (newValue)=> {
-    searchQuery.value = newValue
+    searchQuery.value = newValue.value
 }) 
 
 </script>
