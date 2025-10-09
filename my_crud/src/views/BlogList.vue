@@ -64,6 +64,7 @@
               >หัวข้อ</span
             >
           </div>
+
           <!-- ปุ่มลบเฉพาะเมื่อมีการเลือก -->
           <div
             v-if="anySelected"
@@ -124,6 +125,7 @@
                 <option :value="30">30</option>
                 <option :value="40">40</option>
               </select>
+
               <!-- ตัวควบคุมหน้า: แสดงเมื่อไม่ได้เปิด "แสดงทั้งหมด" -->
               <div v-if="!showAll" class="flex items-center gap-2 ml-4">
                 <button
@@ -133,7 +135,7 @@
                 >
                  <<
                 </button>
-                
+
                 <span>หน้า</span>
                 <input
                   type="number"
@@ -153,6 +155,7 @@
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -160,6 +163,7 @@
 </template>
 
 <script setup lang="ts">
+//-------------------- Imports -------------------- //
 import { onMounted, onUnmounted, ref, computed, watch } from "vue";
 import { useBlogStore } from "../stores/BlogStore";
 import BlogCard from "../components/BlogCard.vue";
@@ -168,31 +172,27 @@ import Navbar from "../components/Navbar.vue";
 import ToggleSwitch from "../components/ToggleSwitch.vue";
 import type { Blog } from "../types/blog";
 
+// -------------------- Store bindings --------------------//
 const {
-  blogs, // ref<Blog[]>
-  blog, // ref<Blog|null>
-  loading, // ref<boolean>
-  error, // ref<string|null>
-  searchQuery, // ref<string>
+  blogs,           // ref<Blog[]>
+  loading,         // ref<boolean>
+  searchQuery,     // ref<string>
   fetchBlogs,
   deleteBlog,
   deleteMany,
 } = useBlogStore();
 
+// -------------------- Top controls (watch / mounted first) -------------------- //
+// UI toggles
 const showAll = ref<boolean>(false);
 
-const showInitialSpinner = computed(
-  () => showSpinner.value && !blogs.value.length
-);
-
-// multiple select state
-const selectedIds = ref<Set<number>>(new Set());
-
-//Loading
+// spinner control
 const FORCE_MIN_MS = 1500;
 const showSpinner = ref(false);
 let startAt = 0;
 let spinerTimer: number | null = null;
+
+// spinner reacts to store.loading
 watch(loading, (is) => {
   if (is) {
     if (spinerTimer) {
@@ -211,7 +211,7 @@ watch(loading, (is) => {
   }
 });
 
-// การโหลดข้อมูล
+// fetch initial data
 onMounted(async () => {
   try {
     await fetchBlogs();
@@ -220,37 +220,32 @@ onMounted(async () => {
   }
 });
 
+// cleanup timers
 onUnmounted(() => {
   if (spinerTimer) clearTimeout(spinerTimer);
 });
 
-// ----- -------------------------------Search---------------------------------------------
+// -------------------- Search -------------------- //
 const filteredBlogs = computed(() => {
   let list = blogs.value ?? [];
   const q = (searchQuery.value ?? "").trim().toLowerCase();
-  // ค้นหาจาก title+content
   if (q) {
     list = list.filter(
       (b: Blog) =>
-        b.title.toLowerCase().includes(q) || b.content.toLowerCase().includes(q)
+        b.title.toLowerCase().includes(q) ||
+        b.content.toLowerCase().includes(q)
     );
   }
-
   return list;
 });
 
-// -------------------Pagination-------------------
+// -------------------- Pagination -------------------- //
 const page = ref<number>(1);
 const pageSize = ref<number>(10);
 
-watch(showAll, () => {
-  page.value = 1;
-});
-watch([filteredBlogs, pageSize], () => {
-  page.value = 1;
-});
+watch(showAll, () => { page.value = 1; });
+watch([filteredBlogs, pageSize], () => { page.value = 1; });
 
-//รายการตามหน้า
 const pagedBlogs = computed(() => {
   if (showAll.value) return filteredBlogs.value;
   const start = (page.value - 1) * pageSize.value;
@@ -269,26 +264,19 @@ watch([page, totalPages], () => {
   else if (page.value > totalPages.value) page.value = totalPages.value;
 });
 
-function prevPage() {
-  if (page.value > 1) page.value--;
-}
-function nextPage() {
-  if (page.value < totalPages.value) page.value++;
-}
+// -------------------- Multi-select -------------------- //
+const selectedIds = ref<Set<number>>(new Set());
 
-//---------- Multiple Select ----------//
 const selectedOnPageCount = computed(
   () => pagedBlogs.value.filter((b: Blog) => selectedIds.value.has(b.id)).length
 );
 
-// เลือกครบทุกใบในหน้า?
 const allSelected = computed(
   () =>
     pagedBlogs.value.length > 0 &&
     selectedOnPageCount.value === pagedBlogs.value.length
 );
 
-// มีการเลือกอย่างน้อย 1
 const anySelected = computed(() => selectedIds.value.size > 0);
 
 const selectAllRef = ref<HTMLInputElement | null>(null);
@@ -298,7 +286,6 @@ watch([allSelected, selectedOnPageCount, pagedBlogs], () => {
     selectedOnPageCount.value > 0 && !allSelected.value;
 });
 
-// เลือก/ไม่เลือกทั้งหมด
 function toggleSelectAll(checked: boolean) {
   if (checked) {
     pagedBlogs.value.forEach((b: Blog) => selectedIds.value.add(b.id));
@@ -306,25 +293,18 @@ function toggleSelectAll(checked: boolean) {
     pagedBlogs.value.forEach((b: Blog) => selectedIds.value.delete(b.id));
   }
 }
-
-// เลือก/ไม่เลือกรายการเดียว
 function toggleSelectOne(id: number, checked: boolean) {
   if (checked) selectedIds.value.add(id);
   else selectedIds.value.delete(id);
 }
-
-// เคลียร์การเลือกทั้งหมด
 function clearSelection() {
   selectedIds.value.clear();
 }
-
-// ลบหลายรายการ (มี confirm)
 async function confirmDeleteMany() {
   const ids = Array.from(selectedIds.value);
   if (!ids.length) return;
   const ok = window.confirm(`ยืนยันลบ ${ids.length} รายการหรือไม่?`);
   if (!ok) return;
-
   try {
     await deleteMany(ids);
     selectedIds.value.clear();
@@ -333,7 +313,7 @@ async function confirmDeleteMany() {
   }
 }
 
-// ------------------------------ฟังก์ชันลบ (เดี่ยว/หลาย) ------------------------------
+// -------------------- Delete (single / many) -------------------- //
 async function onRequestDelete(targetId: number) {
   const hasSelection = selectedIds.value.size > 0;
   const ids = hasSelection ? Array.from(selectedIds.value) : [targetId];
@@ -347,6 +327,7 @@ async function onRequestDelete(targetId: number) {
   }
 }
 
+//-------------------- Keep selection in sync with data --------------------//
 watch(
   () => blogs.value.map((b: Blog) => b.id),
   (ids) => {
