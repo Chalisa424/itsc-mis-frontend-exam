@@ -1,4 +1,4 @@
-import { toRefs, reactive } from 'vue';
+import { ref, computed } from 'vue';
 import http, { API_BASE_URL } from '../services/apiClient';
 import type { Blog } from '../types/blog';
 import type { BlogApi, BlogListResponse } from '../types/api';
@@ -28,18 +28,17 @@ function toAppModel(b: BlogApi): Blog {
 }
 
 export function useBlogStore() {
-  const state =reactive({
-    blogs: [] as Blog[],
-    blog: null as Blog | null,
-    loading: false,
-    error: null as string | null,
-    searchQuery:'',
-  });
+  const blogs = ref<Blog[]>([]);
+  const blog = ref<Blog | null>(null);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  const searchQuery =ref('');
+
 
   // GET /blogs
   async function fetchBlogs(param?: { page?: number; size?: number; q?: string; show?: 'all' | 'active' }) {
-    state.loading = true;
-    state.error = null;
+    loading.value = true;
+    error.value = null;
 
     const page = param?.page ?? 1;
     const size = param?.size ?? 10000;
@@ -61,42 +60,42 @@ export function useBlogStore() {
         ? payload
         : [];
 
-      state.blogs = rows.map(toAppModel);
+      blogs.value = rows.map(toAppModel);
       return res.data;
     } catch (e: any) {
-      state.error = e?.response?.data?.error || 'Failed to fetch blogs';
+      error.value = e?.response?.data?.error || 'Failed to fetch blogs';
       throw e;
     } finally {
-      state.loading = false;
+      loading.value = false;
     }
   }
 
   // GET /blogs/:id
   async function fetchBlogById(id: number) {
-    state.loading = true;
-    state.error = null;
+    loading.value = true;
+    error.value = null;
      try {
     const res = await http.get<BlogApi>(`/blogs/${id}`);
     console.log('API Response for blog:', res.data); // เพิ่ม log
     const b = toAppModel(res.data);
     console.log('After conversion:', b); // เพิ่ม log
-    state.blog = b;
-    const i = state.blogs.findIndex((x) => x.id === id);
-    if (i === -1) state.blogs.unshift(b);
-    else state.blogs[i] = b;
+    blog.value = b;
+    const i = blogs.value.findIndex((x) => x.id === id);
+    if (i === -1) blogs.value.unshift(b);
+    else blogs.value[i] = b;
     return b;
   } catch (e: any) {
-    state.error = e?.response?.data?.error || 'Failed to fetch blog';
+    error.value = e?.response?.data?.error || 'Failed to fetch blog';
     throw e;
   } finally {
-    state.loading = false;
+    loading.value = false;
   }
 }
 
   // POST /blogs
   async function addBlog(payload: { title: string; content: string; image?: File | null; published: boolean }) {
-    state.loading = true;
-    state.error = null;
+    loading.value = true;
+    error.value = null;
     try {
       const fd = new FormData();
       fd.append('title', payload.title);
@@ -106,27 +105,27 @@ export function useBlogStore() {
 
       const res = await http.post<BlogApi>('/blogs', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       const created = toAppModel(res.data);
-      state.blogs.unshift(created);
+      blogs.value.unshift(created);
       return created;
     } catch (e: any) {
-      state.error = e?.response?.data?.error || 'Failed to create blog';
+      error.value = e?.response?.data?.error || 'Failed to create blog';
       throw e;
     } finally {
-      state.loading = false;
+      loading.value = false;
     }
   }
 
   // PUT /blogs/:id
   async function updateBlog(id: number, payload: { title?: string; content?: string; image?: File | null; published?: boolean }) {
-    state.loading = true;
-    state.error = null;
+    loading.value = true;
+    error.value = null;
 
     const blogId = Number(id);
     if (!Number.isFinite(blogId)) throw new Error('Invalid blog id');
 
-    const idx = state.blogs.findIndex((b) => b.id === blogId);
+    const idx = blogs.value.findIndex((b) => b.id === blogId);
     const hadLocal = idx !== -1;
-    const prev = hadLocal ? { ...state.blogs[idx] } : null;
+    const prev = hadLocal ? { ...blogs.value[idx] } : null;
 
     try {
       const fd = new FormData();
@@ -142,74 +141,79 @@ export function useBlogStore() {
         ? { ...prev!, ...updated, id: prev!.id, imageUrl: updated.imageUrl ?? prev!.imageUrl }
         : updated;
 
-      if (hadLocal) state.blogs[idx] = merged;
-      else state.blogs.unshift(merged);
+      if (hadLocal) blogs.value[idx] = merged;
+      else blogs.value.unshift(merged);
 
-      if (state.blog?.id === blogId) state.blog = merged;
+      if (blog.value?.id === blogId) blog.value = merged;
 
        return merged;
     } catch (e: any) {
-      if (hadLocal && prev) state.blogs[idx] = prev;
-      state.error = e?.response?.data?.error || 'Failed to update blog';
+      if (hadLocal && prev) blogs.value[idx] = prev;
+      error.value = e?.response?.data?.error || 'Failed to update blog';
       throw e;
     } finally {
-      state.loading = false;
+      loading.value = false;
     }
   }
 
   // DELETE /blogs/:id
   async function deleteBlog(id: number) {
-    state.loading = true;
-    state.error = null;
+    loading.value = true;
+    error.value = null;
     try {
       await http.delete(`/blogs/${id}`);
-      state.blogs = state.blogs.filter((b) => b.id !== id);
-      if (state.blog?.id === id) state.blog = null;
+      blogs.value = blogs.value.filter((b) => b.id !== id);
+      if (blog.value?.id === id) blog.value = null;
     } catch (e: any) {
-      state.error = e?.response?.data?.error || 'Failed to delete blog';
+      error.value = e?.response?.data?.error || 'Failed to delete blog';
       throw e;
     } finally {
-      state.loading = false;
+      loading.value = false;
     }
   }
 
   // PUT /blogs/:id/remove-image
   async function removeImage(id: number) {
-    state.loading = true;
-    state.error = null;
+    loading.value = true;
+    error.value = null;
     try {
       await http.put(`/blogs/${id}/remove-image`);
-      const i = state.blogs.findIndex((b) => b.id === id);
-      if (i !== -1) state.blogs[i] = { ...state.blogs[i], imageUrl: null };
-      if (state.blog?.id === id) state.blog = { ...state.blog, imageUrl: null };
+      const i = blogs.value.findIndex((b) => b.id === id);
+      if (i !== -1) blogs.value[i] = { ...blogs.value[i], imageUrl: null };
+      if (blog.value?.id === id) blog.value = { ...blog.value, imageUrl: null };
     } catch (e: any) {
-      state.error = e?.response?.data?.error || 'Failed to remove image';
+      error.value = e?.response?.data?.error || 'Failed to remove image';
       throw e;
     } finally {
-      state.loading = false;
+      loading.value = false;
     }
   }
 
   // POST /blogs/delete
   async function deleteMany(ids: number[]) {
-    state.loading = true;
-    state.error = null;
+    loading.value = true;
+    error.value = null;
     try {
       await http.post('/blogs/delete', { ids });
       const set = new Set(ids);
-      state.blogs = state.blogs.filter((b) => !set.has(b.id));
-      if (state.blog && set.has(state.blog.id)) state.blog = null;
+      blogs.value = blogs.value.filter((b) => !set.has(b.id));
+      if (blog.value && set.has(blog.value.id)) blog.value = null;
     } catch (e: any) {
-      state.error = e?.response?.data?.error || 'Failed to delete blogs';
+      error.value = e?.response?.data?.error || 'Failed to delete blogs';
       throw e;
     } finally {
-      state.loading = false;
+      loading.value = false;
     }
   }
 
   return {
-    // return ค่าโดยตรงจาก reactive state
-   ...toRefs(state),
+    // state (refs)
+    blogs,
+    blog,
+    loading,
+    error,
+    searchQuery,
+    // actions
     fetchBlogs,
     fetchBlogById,
     addBlog,
